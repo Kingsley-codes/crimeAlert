@@ -3,7 +3,7 @@
 from flask import Flask, render_template
 
 from app.config import Config
-from app.extensions import db, login_manager, migrate
+from app.extensions import csrf, db, login_manager, migrate
 
 
 def create_app(config_overrides: dict | None = None) -> Flask:
@@ -17,18 +17,29 @@ def create_app(config_overrides: dict | None = None) -> Flask:
     db.init_app(app)
     migrate.init_app(app, db)
     login_manager.init_app(app)
+    csrf.init_app(app)
+    login_manager.login_view = "web.login"
+    login_manager.login_message = "Please sign in to continue."
+    login_manager.login_message_category = "warning"
 
     # Import models after extensions are ready so Flask-Migrate sees all metadata.
     from app import models  # noqa: F401
 
     @login_manager.user_loader
-    def load_user(_user_id: str):  # type: ignore[no-untyped-def]
-        """Authentication is intentionally not implemented in this scaffold."""
-        return None
+    def load_user(user_id: str):  # type: ignore[no-untyped-def]
+        """Reject suspended accounts whenever Flask-Login restores a session."""
+        from app.models.user import User
 
+        if not user_id.isdigit():
+            return None
+        user = db.session.get(User, int(user_id))
+        return user if user is not None and user.can_authenticate else None
+
+    from app.routes.admin import admin_bp
     from app.routes.web import web_bp
 
     app.register_blueprint(web_bp)
+    app.register_blueprint(admin_bp)
 
     register_error_handlers(app)
     return app

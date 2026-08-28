@@ -23,5 +23,10 @@ class User(UserMixin, db.Model):
 
     __table_args__ = (db.CheckConstraint("role IN ('user', 'admin')", name="ck_users_role"),)
 
+    @property
+    def can_authenticate(self) -> bool:
+        """Return whether the account may establish or retain a session."""
+        return bool(self.is_active)
+
     def __repr__(self) -> str:
         return f"<User id={self.id} email={self.email!r} role={self.role!r}>"

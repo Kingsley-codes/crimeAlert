@@ -1,2 +1,5 @@
-"""Shared utilities will be added here."""
+"""Shared utilities."""
 
+from app.utils.decorators import admin_required
+
+__all__ = ["admin_required"]

@@ -8,6 +8,15 @@
     <script src="https://cdn.tailwindcss.com"></script>
   </head>
   <body class="min-h-screen bg-slate-50 text-slate-900 antialiased">
-    <main>{% block content %}{% endblock %}</main>
+    <main>
+      <div class="mx-auto max-w-5xl px-6 pt-6">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% for category, message in messages %}
+            <div class="mb-3 rounded-lg border px-4 py-3 text-sm {% if category == 'error' %}border-red-200 bg-red-50 text-red-800{% elif category == 'warning' %}border-amber-200 bg-amber-50 text-amber-900{% else %}border-emerald-200 bg-emerald-50 text-emerald-800{% endif %}" role="status">{{ message }}</div>
+          {% endfor %}
+        {% endwith %}
+      </div>
+      {% block content %}{% endblock %}
+    </main>
   </body>
 </html>

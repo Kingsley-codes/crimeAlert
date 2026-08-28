@@ -8,6 +8,7 @@ class CrimeReport(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     reporter_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    is_anonymous = db.Column(db.Boolean, nullable=False, server_default=db.false())
     crime_type = db.Column(db.String(100), db.ForeignKey("crime_types.name", onupdate="CASCADE"), nullable=False)
     description = db.Column(db.Text, nullable=False)
     latitude = db.Column(db.Numeric(8, 6), nullable=False)
@@ -38,3 +39,8 @@ class CrimeReport(db.Model):
 
     def __repr__(self) -> str:
         return f"<CrimeReport id={self.id} status={self.status!r} crime_type={self.crime_type!r}>"
+
+    @property
+    def public_reporter(self):  # type: ignore[no-untyped-def]
+        """Never reveal an opted-out reporter through public-facing views."""
+        return None if self.is_anonymous else self.reporter
