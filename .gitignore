@@ -1,0 +1,23 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# Flask
+instance/
+
+# IDE and OS
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+
