@@ -1,5 +1,1 @@
-This directory is reserved for Flask-Migrate revision files.
-
-Initialize it after database connectivity has been verified:
-    flask --app run.py db init
-
+Single-database configuration for Flask.

@@ -18,6 +18,9 @@ def create_app(config_overrides: dict | None = None) -> Flask:
     migrate.init_app(app, db)
     login_manager.init_app(app)
 
+    # Import models after extensions are ready so Flask-Migrate sees all metadata.
+    from app import models  # noqa: F401
+
     @login_manager.user_loader
     def load_user(_user_id: str):  # type: ignore[no-untyped-def]
         """Authentication is intentionally not implemented in this scaffold."""
