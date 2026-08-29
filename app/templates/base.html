@@ -5,9 +5,51 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="CrimeAlert crime reporting system">
     <title>{% block title %}CrimeAlert{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = { theme: { extend: { colors: { ink: '#10233f', brand: { 50: '#eef7ff', 100: '#d9edff', 500: '#1677c8', 600: '#0e65ae', 700: '#0b528e' } }, fontFamily: { sans: ['DM Sans', 'sans-serif'], display: ['Manrope', 'sans-serif'] }, boxShadow: { soft: '0 18px 50px rgba(16, 35, 63, .10)' } } } }
+    </script>
   </head>
-  <body class="min-h-screen bg-slate-50 text-slate-900 antialiased">
+  <body class="min-h-screen bg-slate-50 font-sans text-slate-900 antialiased">
+    <header class="sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur">
+      <nav class="mx-auto flex h-[4.5rem] max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8" aria-label="Main navigation">
+        <a href="{{ url_for('web.home') }}" class="flex items-center gap-2.5" aria-label="CrimeAlert home">
+          <span class="grid h-9 w-9 place-items-center rounded-xl bg-ink text-white shadow-sm">
+            <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3 5 6v5c0 4.55 2.95 8.64 7 10 4.05-1.36 7-5.45 7-10V6l-7-3Z"/><path d="m9.5 12 1.7 1.7 3.5-3.7"/></svg>
+          </span>
+          <span class="font-display text-lg font-extrabold tracking-tight text-ink">CrimeAlert</span>
+        </a>
+        <div class="hidden items-center gap-7 lg:flex">
+          <a href="{{ url_for('web.home') }}" class="text-sm font-semibold text-slate-600 transition hover:text-brand-700">Home</a>
+          <a href="{{ url_for('web.how_it_works') }}" class="text-sm font-semibold text-slate-600 transition hover:text-brand-700">How it works</a>
+          <a href="{{ url_for('web.about') }}" class="text-sm font-semibold text-slate-600 transition hover:text-brand-700">About us</a>
+          <a href="{{ url_for('web.safety_guidance') }}" class="text-sm font-semibold text-slate-600 transition hover:text-brand-700">Safety guidance</a>
+        </div>
+        <div class="hidden items-center gap-3 lg:flex">
+          {% if current_user.is_authenticated %}
+            <a href="{{ url_for('web.my_reports') }}" class="text-sm font-semibold text-slate-700 hover:text-brand-700">My reports</a>
+            <form method="post" action="{{ url_for('web.logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="text-sm font-semibold text-slate-700 hover:text-brand-700">Sign out</button></form>
+          {% else %}
+            <a href="{{ url_for('web.login') }}" class="rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100">Sign in</a>
+          {% endif %}
+          <a href="{{ url_for('web.report_crime') }}" class="rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-brand-700">Report a crime</a>
+        </div>
+        <button id="mobile-menu-button" type="button" class="rounded-lg p-2 text-ink hover:bg-slate-100 lg:hidden" aria-controls="mobile-menu" aria-expanded="false"><span class="sr-only">Open navigation menu</span><svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+      </nav>
+      <div id="mobile-menu" class="hidden border-t border-slate-200 bg-white px-4 py-4 shadow-lg lg:hidden">
+        <div class="mx-auto grid max-w-7xl gap-1">
+          <a href="{{ url_for('web.home') }}" class="rounded-lg px-3 py-3 text-sm font-semibold hover:bg-brand-50">Home</a>
+          <a href="{{ url_for('web.how_it_works') }}" class="rounded-lg px-3 py-3 text-sm font-semibold hover:bg-brand-50">How it works</a>
+          <a href="{{ url_for('web.about') }}" class="rounded-lg px-3 py-3 text-sm font-semibold hover:bg-brand-50">About us</a>
+          <a href="{{ url_for('web.safety_guidance') }}" class="rounded-lg px-3 py-3 text-sm font-semibold hover:bg-brand-50">Safety guidance</a>
+          {% if current_user.is_authenticated %}<a href="{{ url_for('web.my_reports') }}" class="rounded-lg px-3 py-3 text-sm font-semibold hover:bg-brand-50">My reports</a><form method="post" action="{{ url_for('web.logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="w-full rounded-lg px-3 py-3 text-left text-sm font-semibold hover:bg-brand-50">Sign out</button></form>{% else %}<a href="{{ url_for('web.login') }}" class="rounded-lg px-3 py-3 text-sm font-semibold hover:bg-brand-50">Sign in</a>{% endif %}
+          <a href="{{ url_for('web.report_crime') }}" class="mt-2 rounded-lg bg-brand-600 px-4 py-3 text-center text-sm font-bold text-white">Report a crime</a>
+        </div>
+      </div>
+    </header>
     <main>
       <div class="mx-auto max-w-5xl px-6 pt-6">
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -18,5 +60,16 @@
       </div>
       {% block content %}{% endblock %}
     </main>
+    <footer class="border-t border-slate-200 bg-white">
+      <div class="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
+        <div><div class="font-display font-extrabold text-ink">CrimeAlert</div><p class="mt-1 text-sm text-slate-500">Community reporting for safer, better-informed places.</p></div>
+        <div class="flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold text-slate-600"><a href="{{ url_for('web.about') }}" class="hover:text-brand-700">About</a><a href="{{ url_for('web.how_it_works') }}" class="hover:text-brand-700">How it works</a><a href="{{ url_for('web.safety_guidance') }}" class="hover:text-brand-700">Safety guidance</a></div>
+      </div>
+    </footer>
+    <script>
+      const menuButton = document.getElementById('mobile-menu-button');
+      const mobileMenu = document.getElementById('mobile-menu');
+      menuButton?.addEventListener('click', () => { const isOpen = !mobileMenu.classList.toggle('hidden'); menuButton.setAttribute('aria-expanded', String(isOpen)); });
+    </script>
   </body>
 </html>

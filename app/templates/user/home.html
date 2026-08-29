@@ -1,19 +1,21 @@
 {% extends "base.html" %}
 
-{% block title %}CrimeAlert | Crime Reporting System{% endblock %}
+{% block title %}CrimeAlert | Report. Locate. Protect.{% endblock %}
 
 {% block content %}
-<section class="mx-auto flex min-h-screen max-w-5xl items-center px-6 py-16">
-  <div class="max-w-2xl">
-    <p class="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-blue-700">CrimeAlert</p>
-    <h1 class="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">Crime Reporting System</h1>
-    <p class="mt-6 text-lg leading-8 text-slate-600">
-      A secure, location-aware platform for reporting and monitoring crime incidents.
-    </p>
-    <a href="{{ url_for('web.report_crime') }}" class="mt-8 inline-flex rounded-lg bg-blue-700 px-5 py-3 font-semibold text-white shadow-sm hover:bg-blue-800">Report a crime</a>
-    {% if current_user.is_authenticated %}
-      <a href="{{ url_for('web.my_reports') }}" class="mt-3 inline-flex rounded-lg px-5 py-3 font-semibold text-blue-700 ring-1 ring-inset ring-blue-700 hover:bg-blue-50 sm:ml-3">My reports</a>
-    {% endif %}
+<section class="overflow-hidden bg-gradient-to-br from-brand-50 via-white to-slate-50">
+  <div class="mx-auto grid max-w-7xl gap-12 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-[.94fr_1.06fr] lg:items-center lg:px-8 lg:py-24">
+    <div class="max-w-xl">
+      <p class="inline-flex items-center gap-2 rounded-full bg-brand-100 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-brand-700"><span class="h-1.5 w-1.5 rounded-full bg-brand-600"></span> Community safety platform</p>
+      <h1 class="mt-6 font-display text-4xl font-extrabold leading-tight tracking-tight text-ink sm:text-5xl lg:text-6xl">A clearer way to report what matters.</h1>
+      <p class="mt-6 max-w-lg text-lg leading-8 text-slate-600">CrimeAlert helps communities document incidents with location context, keep track of submissions, and support informed safety responses.</p>
+      <div class="mt-8 flex flex-col gap-3 sm:flex-row"><a href="{{ url_for('web.report_crime') }}" class="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-5 py-3.5 font-bold text-white shadow-soft transition hover:bg-brand-700">Report an incident <span aria-hidden="true">→</span></a><a href="{{ url_for('web.how_it_works') }}" class="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-5 py-3.5 font-bold text-slate-700 transition hover:border-brand-200 hover:bg-brand-50">How it works</a></div>
+      <p class="mt-5 text-sm text-slate-500">For immediate danger, contact local emergency services first.</p>
+    </div>
+    <div class="relative"><div class="absolute -inset-4 rounded-[2rem] bg-brand-100/70 blur-2xl"></div><img src="{{ url_for('static', filename='images/community-safety-hero.png') }}" alt="Community members using a phone to support neighbourhood safety" class="relative aspect-[1.15/1] w-full rounded-[1.5rem] object-cover shadow-soft"><div class="absolute -bottom-5 left-5 right-5 rounded-xl border border-white/70 bg-white/95 p-4 shadow-lg backdrop-blur sm:left-8 sm:right-auto sm:w-72"><div class="flex items-center gap-3"><span class="grid h-9 w-9 place-items-center rounded-lg bg-emerald-100 text-emerald-700">✓</span><div><p class="text-sm font-bold text-ink">Designed for clarity</p><p class="text-xs text-slate-500">Location-aware, review-ready reports</p></div></div></div></div>
   </div>
 </section>
+<section class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8"><div class="grid gap-5 md:grid-cols-3"><div class="rounded-2xl border border-slate-200 bg-white p-6"><div class="grid h-10 w-10 place-items-center rounded-xl bg-brand-100 font-bold text-brand-700">01</div><h2 class="mt-5 font-display text-xl font-extrabold text-ink">Report with context</h2><p class="mt-2 leading-6 text-slate-600">Record the incident type, timing, description and optional supporting media in one focused form.</p></div><div class="rounded-2xl border border-slate-200 bg-white p-6"><div class="grid h-10 w-10 place-items-center rounded-xl bg-amber-100 font-bold text-amber-700">02</div><h2 class="mt-5 font-display text-xl font-extrabold text-ink">Pin the location</h2><p class="mt-2 leading-6 text-slate-600">Use the map or your device location to add useful geographic context to a report.</p></div><div class="rounded-2xl border border-slate-200 bg-white p-6"><div class="grid h-10 w-10 place-items-center rounded-xl bg-emerald-100 font-bold text-emerald-700">03</div><h2 class="mt-5 font-display text-xl font-extrabold text-ink">Follow progress</h2><p class="mt-2 leading-6 text-slate-600">Signed-in users can see their report history and review status without exposing private identity information.</p></div></div></section>
+<section class="border-y border-slate-200 bg-ink"><div class="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-2 lg:px-8"><div><p class="text-sm font-bold uppercase tracking-wider text-brand-100">Built for local context</p><h2 class="mt-3 font-display text-3xl font-extrabold text-white">Helpful data begins with responsible reporting.</h2></div><p class="max-w-xl leading-7 text-slate-300">From urban communities and campuses to estates and local security teams, CrimeAlert is designed to make incident reporting more structured, location-aware and easier to review.</p></div></section>
+<section class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8"><div class="rounded-3xl bg-brand-50 px-6 py-10 sm:px-10 sm:py-12"><p class="text-sm font-bold uppercase tracking-wider text-brand-700">When you are ready</p><div class="mt-3 flex flex-col justify-between gap-6 md:flex-row md:items-end"><div><h2 class="font-display text-3xl font-extrabold tracking-tight text-ink">Share an incident, safely and clearly.</h2><p class="mt-3 max-w-2xl text-slate-600">You can choose to submit anonymously. Reports are recorded for review before they are used in safety monitoring.</p></div><a href="{{ url_for('web.report_crime') }}" class="inline-flex shrink-0 items-center justify-center rounded-lg bg-brand-600 px-5 py-3 font-bold text-white hover:bg-brand-700">Start a report</a></div></div></section>
 {% endblock %}

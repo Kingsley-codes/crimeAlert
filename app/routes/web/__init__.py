@@ -23,6 +23,21 @@ def home():  # type: ignore[no-untyped-def]
     return render_template("user/home.html")
 
 
+@web_bp.get("/about")
+def about():  # type: ignore[no-untyped-def]
+    return render_template("public/about.html")
+
+
+@web_bp.get("/how-it-works")
+def how_it_works():  # type: ignore[no-untyped-def]
+    return render_template("public/how_it_works.html")
+
+
+@web_bp.get("/safety-guidance")
+def safety_guidance():  # type: ignore[no-untyped-def]
+    return render_template("public/safety_guidance.html")
+
+
 @web_bp.get("/my-reports")
 @login_required
 def my_reports():  # type: ignore[no-untyped-def]
