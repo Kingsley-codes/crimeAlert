@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Report details | CrimeAlert{% endblock %}
+
+{% block content %}
+{% set status_classes = {'pending': 'bg-slate-100 text-slate-700', 'approved': 'bg-emerald-100 text-emerald-800', 'rejected': 'bg-red-100 text-red-800'} %}
+<section class="mx-auto max-w-2xl px-4 py-8 sm:py-12">
+  <a href="{{ url_for('web.my_reports') }}" class="text-sm font-semibold text-blue-700 hover:underline">← My reports</a>
+  <article class="mt-5 rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-7">
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">{{ report.crime_type }}</p>
+        <h1 class="mt-1 text-2xl font-bold">Report details</h1>
+      </div>
+      <span class="rounded-full px-3 py-1 text-xs font-semibold capitalize {{ status_classes[report.status] }}">{{ report.status }}</span>
+    </div>
+    <dl class="mt-7 space-y-5 text-sm">
+      <div><dt class="font-semibold text-slate-500">Incident date and time</dt><dd class="mt-1 text-slate-900">{{ report.incident_datetime.strftime('%d %B %Y, %H:%M') }}</dd></div>
+      <div><dt class="font-semibold text-slate-500">Description</dt><dd class="mt-1 whitespace-pre-wrap leading-6 text-slate-900">{{ report.description }}</dd></div>
+      <div><dt class="font-semibold text-slate-500">Submitted</dt><dd class="mt-1 text-slate-900">{{ report.created_at.strftime('%d %B %Y, %H:%M') }}</dd></div>
+    </dl>
+  </article>
+</section>
+{% endblock %}

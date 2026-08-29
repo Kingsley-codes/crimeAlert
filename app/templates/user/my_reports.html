@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}My reports | CrimeAlert{% endblock %}
+
+{% block content %}
+<section class="mx-auto max-w-3xl px-4 py-8 sm:py-12">
+  <div class="flex items-start justify-between gap-4">
+    <div>
+      <h1 class="text-3xl font-bold tracking-tight">My reports</h1>
+      <p class="mt-2 text-slate-600">Track the reports you submitted.</p>
+    </div>
+    <a href="{{ url_for('web.report_crime') }}" class="shrink-0 rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800">New report</a>
+  </div>
+
+  {% if reports %}
+    <div class="mt-8 space-y-4">
+      {% for report in reports %}
+        {% set status_classes = {'pending': 'bg-slate-100 text-slate-700', 'approved': 'bg-emerald-100 text-emerald-800', 'rejected': 'bg-red-100 text-red-800'} %}
+        <article class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">{{ report.crime_type }}</p>
+              <h2 class="mt-1 text-lg font-bold text-slate-900">{{ report.incident_datetime.strftime('%d %b %Y, %H:%M') }}</h2>
+            </div>
+            <span class="rounded-full px-3 py-1 text-xs font-semibold capitalize {{ status_classes[report.status] }}">{{ report.status }}</span>
+          </div>
+          <p class="mt-3 line-clamp-2 text-sm leading-6 text-slate-600">{{ report.description }}</p>
+          <a href="{{ url_for('web.my_report_detail', report_id=report.id) }}" class="mt-4 inline-flex text-sm font-semibold text-blue-700 hover:underline">View report <span aria-hidden="true">→</span></a>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="mt-8 rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center">
+      <h2 class="font-semibold">You have not submitted any reports yet.</h2>
+      <a href="{{ url_for('web.report_crime') }}" class="mt-3 inline-flex text-sm font-semibold text-blue-700 hover:underline">Submit your first report</a>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

@@ -2,7 +2,7 @@
 
 from urllib.parse import urljoin, urlparse
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -23,6 +23,30 @@ def home():  # type: ignore[no-untyped-def]
     return render_template("user/home.html")
 
 
+@web_bp.get("/my-reports")
+@login_required
+def my_reports():  # type: ignore[no-untyped-def]
+    """Show only the signed-in user's reports, including their anonymous ones."""
+    reports = db.session.scalars(
+        db.select(CrimeReport)
+        .where(CrimeReport.reporter_id == current_user.id)
+        .order_by(CrimeReport.created_at.desc(), CrimeReport.id.desc())
+    ).all()
+    return render_template("user/my_reports.html", reports=reports)
+
+
+@web_bp.get("/my-reports/<int:report_id>")
+@login_required
+def my_report_detail(report_id: int):  # type: ignore[no-untyped-def]
+    """Return a report only when it belongs to the signed-in user."""
+    report = db.session.scalar(
+        db.select(CrimeReport).where(CrimeReport.id == report_id, CrimeReport.reporter_id == current_user.id)
+    )
+    if report is None:
+        abort(404)
+    return render_template("user/report_detail.html", report=report)
+
+
 @web_bp.route("/report-crime", methods=["GET", "POST"])
 def report_crime():  # type: ignore[no-untyped-def]
     form = CrimeReportForm()
@@ -32,7 +56,8 @@ def report_crime():  # type: ignore[no-untyped-def]
         else:
             try:
                 report = CrimeReport(
-                    reporter_id=None if form.is_anonymous.data else current_user.id,
+                    # A signed-in reporter remains the private owner even when the public report is anonymous.
+                    reporter_id=current_user.id if current_user.is_authenticated else None,
                     is_anonymous=bool(form.is_anonymous.data),
                     crime_type=form.crime_type.data,
                     description=form.description.data.strip(),
