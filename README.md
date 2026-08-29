@@ -11,7 +11,7 @@ CrimeAlert is a Flask foundation for a crime location reporting system. The proj
 
 1. Create and activate a virtual environment.
 2. Install dependencies: `python -m pip install -r requirements.txt`
-3. Copy `.env.example` to `.env` and set `DATABASE_URL` and `SECRET_KEY`.
+3. Copy `.env.example` to `.env` and set `DATABASE_URL`, `SECRET_KEY`, and the Cloudinary values if media uploads are needed.
 4. Start the app: `python run.py`
 
 The home page is available at `http://127.0.0.1:5000/`.
@@ -25,6 +25,13 @@ The home page is available at `http://127.0.0.1:5000/`.
 The project includes its initial database migrations. Apply them to a configured
 database with `flask --app run.py db upgrade`; the Render start command does
 this automatically before Gunicorn starts the web service.
+
+## Media uploads
+
+Crime-report media is stored in Cloudinary, not on the application filesystem. Configure
+`CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET`. The maximum
+file size and accepted image/video MIME types are configurable through the `REPORT_*`
+variables shown in `.env.example`.
 
 ## Render deployment
 
