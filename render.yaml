@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: crimealert
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    # Keeps the database schema current on the first deploy and each later deploy.
+    startCommand: flask --app run.py db upgrade && gunicorn run:app
+    autoDeploy: true
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: crimealert-db
+          property: connectionString
+
+databases:
+  - name: crimealert-db
+    plan: free

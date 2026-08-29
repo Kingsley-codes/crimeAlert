@@ -22,7 +22,20 @@ The home page is available at `http://127.0.0.1:5000/`.
 
 `postgresql://user:password@host:5432/database`
 
-No database models or migrations have been created yet. Once the connection test succeeds, initialise Flask-Migrate with `flask --app run.py db init` and then create models deliberately.
+The project includes its initial database migrations. Apply them to a configured
+database with `flask --app run.py db upgrade`; the Render start command does
+this automatically before Gunicorn starts the web service.
+
+## Render deployment
+
+This repository includes a `render.yaml` Blueprint that creates a Python web
+service and a Render PostgreSQL database. It installs the production server,
+runs pending database migrations, and starts the app with Gunicorn.
+
+In the Render Dashboard, select **New > Blueprint**, connect this repository,
+and deploy the detected `render.yaml`. Render creates `DATABASE_URL` from the
+managed database connection and generates `SECRET_KEY` automatically. Do not
+upload or commit your local `.env` file.
 
 ## Tests
 
