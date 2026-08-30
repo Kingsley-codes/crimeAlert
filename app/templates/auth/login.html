@@ -4,12 +4,12 @@
 {% block content %}
 <section class="mx-auto max-w-md px-6 py-16">
   <h1 class="text-3xl font-bold tracking-tight">Sign in</h1>
-  <form method="post" class="mt-8 space-y-5 rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200" novalidate>
+  <form method="post" class="mt-8 space-y-5 rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200" data-auth-form novalidate>
     {{ form.hidden_tag() }}
     {{ field(form.email) }}
     {{ field(form.password) }}
     <label class="flex items-center gap-2 text-sm text-slate-700">{{ form.remember() }} {{ form.remember.label.text }}</label>
-    {{ form.submit(class_="w-full rounded-lg bg-blue-700 px-4 py-2.5 font-semibold text-white hover:bg-blue-800") }}
+    {{ form.submit(class_="w-full rounded-lg bg-brand-600 px-4 py-2.5 font-semibold text-white transition hover:bg-brand-700 disabled:cursor-wait disabled:bg-brand-400", data_submit_button="true", data_loading_text="Signing in…") }}
   </form>
   <p class="mt-5 text-sm text-slate-600">Need an account? <a class="font-semibold text-blue-700" href="{{ url_for('web.register') }}">Register</a>.</p>
 </section>

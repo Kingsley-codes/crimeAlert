@@ -12,8 +12,11 @@
     <script>
       tailwind.config = { theme: { extend: { colors: { ink: '#10233f', brand: { 50: '#eef7ff', 100: '#d9edff', 500: '#1677c8', 600: '#0e65ae', 700: '#0b528e' } }, fontFamily: { sans: ['DM Sans', 'sans-serif'], display: ['Manrope', 'sans-serif'] }, boxShadow: { soft: '0 18px 50px rgba(16, 35, 63, .10)' } } } }
     </script>
+    {% block page_styles %}{% endblock %}
   </head>
   <body class="min-h-screen bg-slate-50 font-sans text-slate-900 antialiased">
+    {% set current_endpoint = request.endpoint %}
+    {% set reports_active = current_endpoint in ['web.my_reports', 'web.my_report_detail'] %}
     <header class="sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur">
       <nav class="mx-auto flex h-[4.5rem] max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8" aria-label="Main navigation">
         <a href="{{ url_for('web.home') }}" class="flex items-center gap-2.5" aria-label="CrimeAlert home">
@@ -23,30 +26,30 @@
           <span class="font-display text-lg font-extrabold tracking-tight text-ink">CrimeAlert</span>
         </a>
         <div class="hidden items-center gap-7 lg:flex">
-          <a href="{{ url_for('web.home') }}" class="text-sm font-semibold text-slate-600 transition hover:text-brand-700">Home</a>
-          <a href="{{ url_for('web.how_it_works') }}" class="text-sm font-semibold text-slate-600 transition hover:text-brand-700">How it works</a>
-          <a href="{{ url_for('web.about') }}" class="text-sm font-semibold text-slate-600 transition hover:text-brand-700">About us</a>
-          <a href="{{ url_for('web.safety_guidance') }}" class="text-sm font-semibold text-slate-600 transition hover:text-brand-700">Safety guidance</a>
+          <a href="{{ url_for('web.home') }}" {% if current_endpoint == 'web.home' %}aria-current="page"{% endif %} class="text-sm font-semibold transition {% if current_endpoint == 'web.home' %}text-brand-700{% else %}text-slate-600 hover:text-brand-700{% endif %}">Home</a>
+          <a href="{{ url_for('web.how_it_works') }}" {% if current_endpoint == 'web.how_it_works' %}aria-current="page"{% endif %} class="text-sm font-semibold transition {% if current_endpoint == 'web.how_it_works' %}text-brand-700{% else %}text-slate-600 hover:text-brand-700{% endif %}">How it works</a>
+          <a href="{{ url_for('web.about') }}" {% if current_endpoint == 'web.about' %}aria-current="page"{% endif %} class="text-sm font-semibold transition {% if current_endpoint == 'web.about' %}text-brand-700{% else %}text-slate-600 hover:text-brand-700{% endif %}">About us</a>
+          <a href="{{ url_for('web.safety_guidance') }}" {% if current_endpoint == 'web.safety_guidance' %}aria-current="page"{% endif %} class="text-sm font-semibold transition {% if current_endpoint == 'web.safety_guidance' %}text-brand-700{% else %}text-slate-600 hover:text-brand-700{% endif %}">Safety guidance</a>
         </div>
         <div class="hidden items-center gap-3 lg:flex">
           {% if current_user.is_authenticated %}
-            <a href="{{ url_for('web.my_reports') }}" class="text-sm font-semibold text-slate-700 hover:text-brand-700">My reports</a>
+            <a href="{{ url_for('web.my_reports') }}" {% if reports_active %}aria-current="page"{% endif %} class="text-sm font-semibold {% if reports_active %}text-brand-700{% else %}text-slate-700 hover:text-brand-700{% endif %}">My reports</a>
             <form method="post" action="{{ url_for('web.logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="text-sm font-semibold text-slate-700 hover:text-brand-700">Sign out</button></form>
           {% else %}
-            <a href="{{ url_for('web.login') }}" class="rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100">Sign in</a>
+            <a href="{{ url_for('web.login') }}" {% if current_endpoint == 'web.login' %}aria-current="page"{% endif %} class="rounded-lg px-3 py-2 text-sm font-semibold {% if current_endpoint == 'web.login' %}bg-brand-50 text-brand-700{% else %}text-slate-700 hover:bg-slate-100{% endif %}">Sign in</a>
           {% endif %}
-          <a href="{{ url_for('web.report_crime') }}" class="rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-brand-700">Report a crime</a>
+          <a href="{{ url_for('web.report_crime') }}" {% if current_endpoint == 'web.report_crime' %}aria-current="page"{% endif %} class="rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-brand-700 {% if current_endpoint == 'web.report_crime' %}ring-2 ring-brand-200 ring-offset-2{% endif %}">Report a crime</a>
         </div>
         <button id="mobile-menu-button" type="button" class="rounded-lg p-2 text-ink hover:bg-slate-100 lg:hidden" aria-controls="mobile-menu" aria-expanded="false"><span class="sr-only">Open navigation menu</span><svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
       </nav>
       <div id="mobile-menu" class="hidden border-t border-slate-200 bg-white px-4 py-4 shadow-lg lg:hidden">
         <div class="mx-auto grid max-w-7xl gap-1">
-          <a href="{{ url_for('web.home') }}" class="rounded-lg px-3 py-3 text-sm font-semibold hover:bg-brand-50">Home</a>
-          <a href="{{ url_for('web.how_it_works') }}" class="rounded-lg px-3 py-3 text-sm font-semibold hover:bg-brand-50">How it works</a>
-          <a href="{{ url_for('web.about') }}" class="rounded-lg px-3 py-3 text-sm font-semibold hover:bg-brand-50">About us</a>
-          <a href="{{ url_for('web.safety_guidance') }}" class="rounded-lg px-3 py-3 text-sm font-semibold hover:bg-brand-50">Safety guidance</a>
-          {% if current_user.is_authenticated %}<a href="{{ url_for('web.my_reports') }}" class="rounded-lg px-3 py-3 text-sm font-semibold hover:bg-brand-50">My reports</a><form method="post" action="{{ url_for('web.logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="w-full rounded-lg px-3 py-3 text-left text-sm font-semibold hover:bg-brand-50">Sign out</button></form>{% else %}<a href="{{ url_for('web.login') }}" class="rounded-lg px-3 py-3 text-sm font-semibold hover:bg-brand-50">Sign in</a>{% endif %}
-          <a href="{{ url_for('web.report_crime') }}" class="mt-2 rounded-lg bg-brand-600 px-4 py-3 text-center text-sm font-bold text-white">Report a crime</a>
+          <a href="{{ url_for('web.home') }}" {% if current_endpoint == 'web.home' %}aria-current="page"{% endif %} class="rounded-lg px-3 py-3 text-sm font-semibold {% if current_endpoint == 'web.home' %}bg-brand-50 text-brand-700{% else %}hover:bg-brand-50{% endif %}">Home</a>
+          <a href="{{ url_for('web.how_it_works') }}" {% if current_endpoint == 'web.how_it_works' %}aria-current="page"{% endif %} class="rounded-lg px-3 py-3 text-sm font-semibold {% if current_endpoint == 'web.how_it_works' %}bg-brand-50 text-brand-700{% else %}hover:bg-brand-50{% endif %}">How it works</a>
+          <a href="{{ url_for('web.about') }}" {% if current_endpoint == 'web.about' %}aria-current="page"{% endif %} class="rounded-lg px-3 py-3 text-sm font-semibold {% if current_endpoint == 'web.about' %}bg-brand-50 text-brand-700{% else %}hover:bg-brand-50{% endif %}">About us</a>
+          <a href="{{ url_for('web.safety_guidance') }}" {% if current_endpoint == 'web.safety_guidance' %}aria-current="page"{% endif %} class="rounded-lg px-3 py-3 text-sm font-semibold {% if current_endpoint == 'web.safety_guidance' %}bg-brand-50 text-brand-700{% else %}hover:bg-brand-50{% endif %}">Safety guidance</a>
+          {% if current_user.is_authenticated %}<a href="{{ url_for('web.my_reports') }}" {% if reports_active %}aria-current="page"{% endif %} class="rounded-lg px-3 py-3 text-sm font-semibold {% if reports_active %}bg-brand-50 text-brand-700{% else %}hover:bg-brand-50{% endif %}">My reports</a><form method="post" action="{{ url_for('web.logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="w-full rounded-lg px-3 py-3 text-left text-sm font-semibold hover:bg-brand-50">Sign out</button></form>{% else %}<a href="{{ url_for('web.login') }}" {% if current_endpoint == 'web.login' %}aria-current="page"{% endif %} class="rounded-lg px-3 py-3 text-sm font-semibold {% if current_endpoint == 'web.login' %}bg-brand-50 text-brand-700{% else %}hover:bg-brand-50{% endif %}">Sign in</a>{% endif %}
+          <a href="{{ url_for('web.report_crime') }}" {% if current_endpoint == 'web.report_crime' %}aria-current="page"{% endif %} class="mt-2 rounded-lg bg-brand-600 px-4 py-3 text-center text-sm font-bold text-white {% if current_endpoint == 'web.report_crime' %}ring-2 ring-brand-200 ring-offset-2{% endif %}">Report a crime</a>
         </div>
       </div>
     </header>
@@ -70,6 +73,43 @@
       const menuButton = document.getElementById('mobile-menu-button');
       const mobileMenu = document.getElementById('mobile-menu');
       menuButton?.addEventListener('click', () => { const isOpen = !mobileMenu.classList.toggle('hidden'); menuButton.setAttribute('aria-expanded', String(isOpen)); });
+      document.querySelectorAll('[data-password-toggle]').forEach((toggle) => {
+        toggle.addEventListener('click', () => {
+          const input = document.getElementById(toggle.getAttribute('aria-controls'));
+          const reveal = input.type === 'password';
+          input.type = reveal ? 'text' : 'password';
+          toggle.textContent = reveal ? 'Hide' : 'Show';
+          toggle.setAttribute('aria-label', reveal ? 'Hide password' : 'Show password');
+        });
+      });
+      document.querySelectorAll('[data-auth-form]').forEach((form) => {
+        const fields = [...form.querySelectorAll('input:not([type="hidden"]):not([type="checkbox"])')];
+        const setError = (input, message) => {
+          const wrapper = input.closest('[data-field-wrapper]');
+          const error = wrapper?.querySelector('[data-client-error]');
+          input.setCustomValidity(message);
+          input.setAttribute('aria-invalid', message ? 'true' : 'false');
+          input.classList.toggle('border-red-500', Boolean(message));
+          input.classList.toggle('focus:border-red-500', Boolean(message));
+          if (error) { error.textContent = message; error.classList.toggle('hidden', !message); }
+          return !message;
+        };
+        const validate = (input) => {
+          let message = '';
+          if (input.required && !input.value.trim()) message = 'This field is required.';
+          else if (input.type === 'email' && input.validity.typeMismatch) message = 'Enter a valid email address.';
+          else if (input.dataset.passwordRule === 'strong' && !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{12,}$/.test(input.value)) message = 'Use 12+ characters with uppercase, lowercase and a number.';
+          else if (input.dataset.passwordConfirm && input.value !== form.querySelector('#' + input.dataset.passwordConfirm)?.value) message = 'Passwords must match.';
+          return setError(input, message);
+        };
+        fields.forEach((input) => { input.addEventListener('blur', () => validate(input)); input.addEventListener('input', () => { validate(input); const confirmation = form.querySelector('[data-password-confirm]'); if (confirmation && confirmation !== input && confirmation.value) validate(confirmation); }); });
+        form.addEventListener('submit', (event) => {
+          const valid = fields.map(validate).every(Boolean);
+          if (!valid) { event.preventDefault(); form.querySelector('[aria-invalid="true"]')?.focus(); return; }
+          const button = form.querySelector('[data-submit-button]');
+          if (button) { button.disabled = true; button.value = button.dataset.loadingText || 'Submitting…'; }
+        });
+      });
     </script>
   </body>
 </html>
