@@ -205,3 +205,39 @@ def test_admin_report_action_creates_audit_log_and_notification():
     with app.app_context():
         assert db.session.scalar(db.select(AdminLog).where(AdminLog.target_report_id == report_id)) is not None
         assert db.session.scalar(db.select(Notification).where(Notification.report_id == report_id)) is not None
+
+
+def test_admin_can_suspend_and_reactivate_user_without_removing_reports():
+    app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": "sqlite://", "WTF_CSRF_ENABLED": False})
+    with app.app_context():
+        db.create_all()
+        db.session.add(CrimeType(name="theft"))
+        admin = User(name="Admin", email="admin@example.com", password_hash="hash", role="admin")
+        user = User(name="Member", email="member@example.com", password_hash=generate_password_hash("password"), role="user")
+        db.session.add_all([admin, user])
+        db.session.flush()
+        report = CrimeReport(reporter_id=user.id, crime_type="theft", description="Retained report", latitude=6.5, longitude=3.3, incident_datetime=datetime(2026, 8, 1, 9, 0))
+        db.session.add(report)
+        db.session.commit()
+        admin_id, user_id = admin.id, user.id
+
+    client = app.test_client()
+    with client.session_transaction() as session:
+        session["_user_id"] = str(admin_id)
+        session["_fresh"] = True
+    assert client.get("/admin/users").status_code == 200
+    assert client.get("/admin/map-analytics").status_code == 200
+    assert len(client.get("/admin/map-analytics/data").json["reports"]) == 1
+    response = client.post(f"/admin/users/{user_id}/status", json={"action": "suspend"})
+    assert response.status_code == 200
+    assert response.json["is_active"] is False
+    with app.app_context():
+        assert db.session.get(User, user_id).is_active is False
+        assert db.session.scalar(db.select(db.func.count()).select_from(CrimeReport).where(CrimeReport.reporter_id == user_id)) == 1
+        assert db.session.scalar(db.select(AdminLog).where(AdminLog.action == f"user.suspend:{user_id}")) is not None
+
+    suspended_client = app.test_client()
+    assert suspended_client.post("/login", data={"email": "member@example.com", "password": "password"}).status_code == 200
+    response = client.post(f"/admin/users/{user_id}/status", json={"action": "reactivate"})
+    assert response.status_code == 200
+    assert response.json["is_active"] is True

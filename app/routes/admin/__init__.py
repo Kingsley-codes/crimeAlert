@@ -12,6 +12,7 @@ from app.models.admin_log import AdminLog
 from app.models.crime_type import CrimeType
 from app.models.crime_report import CrimeReport
 from app.models.notification import Notification
+from app.models.user import User
 from app.services.auth_service import authenticate_user
 from app.utils.decorators import admin_required
 
@@ -19,6 +20,7 @@ from app.utils.decorators import admin_required
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 VALID_STATUSES = {"approved", "rejected"}
 VALID_RISK_LEVELS = {"high", "medium", "low"}
+VALID_USER_STATUSES = {"active", "suspended"}
 
 
 def _report_payload(report: CrimeReport) -> dict[str, object]:
@@ -33,6 +35,35 @@ def _json_error(message: str, status: int = 400):
 def _parse_filter_date(value: str | None) -> date | None:
     if not value:
         return None
+
+
+def _map_payload(report: CrimeReport) -> dict[str, object]:
+    """Return full-location report data exclusively for the admin analytics map."""
+    return {
+        "id": report.id,
+        "crime_type": report.crime_type,
+        "incident_datetime": report.incident_datetime.isoformat(),
+        "risk_level": report.risk_level,
+        "status": report.status,
+        "latitude": float(report.latitude),
+        "longitude": float(report.longitude),
+    }
+
+
+def _hotspots(reports: list[CrimeReport]) -> list[dict[str, object]]:
+    """Group reports into approximately 5 km coordinate grid cells for quick hotspot ranking."""
+    cell_size = 0.05
+    cells: dict[tuple[int, int], int] = {}
+    for report in reports:
+        key = (int(float(report.latitude) // cell_size), int(float(report.longitude) // cell_size))
+        cells[key] = cells.get(key, 0) + 1
+    return [
+        {
+            "zone": f"Grid {latitude * cell_size:.2f}°, {longitude * cell_size:.2f}°",
+            "count": count,
+        }
+        for (latitude, longitude), count in sorted(cells.items(), key=lambda item: (-item[1], item[0]))[:5]
+    ]
     try:
         return date.fromisoformat(value)
     except ValueError:
@@ -143,6 +174,83 @@ def report_management():  # type: ignore[no-untyped-def]
     reports = db.session.scalars(statement.order_by(CrimeReport.created_at.desc(), CrimeReport.id.desc())).all()
     crime_types = db.session.scalars(db.select(CrimeType).where(CrimeType.is_active.is_(True)).order_by(CrimeType.name)).all()
     return render_template("admin/report_management.html", reports=reports, crime_types=crime_types)
+
+
+@admin_bp.get("/map-analytics")
+@admin_required
+def map_analytics():  # type: ignore[no-untyped-def]
+    """Render the administrator-only all-report crime map."""
+    return render_template("admin/map_analytics.html")
+
+
+@admin_bp.get("/map-analytics/data")
+@admin_required
+def map_analytics_data():  # type: ignore[no-untyped-def]
+    """Return all reports and the five busiest coordinate-grid zones for administrators."""
+    reports = db.session.scalars(db.select(CrimeReport).order_by(CrimeReport.incident_datetime.desc(), CrimeReport.id.desc())).all()
+    return jsonify({"reports": [_map_payload(report) for report in reports], "hotspots": _hotspots(reports)})
+
+
+@admin_bp.get("/users")
+@admin_required
+def user_management():  # type: ignore[no-untyped-def]
+    """List standard user accounts without ever removing their report history."""
+    search = request.args.get("search", "").strip()
+    status = request.args.get("status", "").strip().lower()
+    statement = db.select(User).where(User.role == "user")
+    if status in VALID_USER_STATUSES:
+        statement = statement.where(User.is_active.is_(status == "active"))
+    if search:
+        pattern = f"%{search}%"
+        statement = statement.where(or_(User.name.ilike(pattern), User.email.ilike(pattern), cast(User.id, String).ilike(pattern)))
+    users = db.session.scalars(statement.order_by(User.created_at.desc(), User.id.desc())).all()
+    report_counts = dict(
+        db.session.execute(
+            db.select(CrimeReport.reporter_id, db.func.count(CrimeReport.id))
+            .where(CrimeReport.reporter_id.is_not(None))
+            .group_by(CrimeReport.reporter_id)
+        ).all()
+    )
+    return render_template("admin/user_management.html", users=users, report_counts=report_counts)
+
+
+@admin_bp.get("/users/<int:user_id>")
+@admin_required
+def user_report_history(user_id: int):  # type: ignore[no-untyped-def]
+    """Show an administrator the full retained report history for one standard user."""
+    user = db.session.scalar(db.select(User).where(User.id == user_id, User.role == "user"))
+    if user is None:
+        from flask import abort
+
+        abort(404)
+    reports = db.session.scalars(
+        db.select(CrimeReport).where(CrimeReport.reporter_id == user.id).order_by(CrimeReport.created_at.desc(), CrimeReport.id.desc())
+    ).all()
+    return render_template("admin/user_report_history.html", user=user, reports=reports)
+
+
+@admin_bp.post("/users/<int:user_id>/status")
+@admin_required
+def update_user_status(user_id: int):  # type: ignore[no-untyped-def]
+    """Suspend or reactivate a standard user while retaining every related report."""
+    payload = request.get_json(silent=True)
+    action = str(payload.get("action", "")).strip().lower() if isinstance(payload, dict) else ""
+    if action not in {"suspend", "reactivate"}:
+        return _json_error("Choose suspend or reactivate.")
+    user = db.session.scalar(db.select(User).where(User.id == user_id, User.role == "user"))
+    if user is None:
+        return _json_error("User not found.", 404)
+    new_active = action == "reactivate"
+    if user.is_active == new_active:
+        return _json_error(f"User is already {'active' if new_active else 'suspended'}.")
+    try:
+        user.is_active = new_active
+        db.session.add(AdminLog(admin_id=current_user.id, action=f"user.{action}:{user.id}"))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        return _json_error("The user account could not be updated.", 500)
+    return jsonify({"ok": True, "message": f"{user.name}'s account was {'reactivated' if new_active else 'suspended'}.", "is_active": user.is_active})
 
 
 @admin_bp.post("/reports/<int:report_id>/actions")
