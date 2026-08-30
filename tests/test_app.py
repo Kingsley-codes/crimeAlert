@@ -4,6 +4,8 @@ from app import create_app
 from app.extensions import db
 from app.models.crime_report import CrimeReport
 from app.models.crime_type import CrimeType
+from app.models.admin_log import AdminLog
+from app.models.notification import Notification
 from app.models.user import User
 from werkzeug.security import generate_password_hash
 
@@ -168,3 +170,38 @@ def test_report_crime_is_a_user_dashboard_screen():
     assert response.status_code == 200
     assert b"Report anonymously" in response.data
     assert client.get("/report-crime").status_code == 302
+
+
+def test_admin_report_action_creates_audit_log_and_notification():
+    app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": "sqlite://", "WTF_CSRF_ENABLED": False})
+    with app.app_context():
+        db.create_all()
+        db.session.add(CrimeType(name="theft"))
+        admin = User(name="Admin", email="admin@example.com", password_hash="hash", role="admin")
+        reporter = User(name="Reporter", email="reporter@example.com", password_hash="hash", role="user")
+        db.session.add_all([admin, reporter])
+        db.session.flush()
+        report = CrimeReport(
+            reporter_id=reporter.id,
+            crime_type="theft",
+            description="A report that needs review.",
+            latitude=6.5,
+            longitude=3.3,
+            incident_datetime=datetime(2026, 8, 1, 9, 0),
+        )
+        db.session.add(report)
+        db.session.commit()
+        admin_id, report_id = admin.id, report.id
+
+    client = app.test_client()
+    with client.session_transaction() as session:
+        session["_user_id"] = str(admin_id)
+        session["_fresh"] = True
+
+    response = client.post(f"/admin/reports/{report_id}/actions", json={"action": "approve"})
+    assert response.status_code == 200
+    assert response.json["ok"] is True
+    assert response.json["report"]["status"] == "approved"
+    with app.app_context():
+        assert db.session.scalar(db.select(AdminLog).where(AdminLog.target_report_id == report_id)) is not None
+        assert db.session.scalar(db.select(Notification).where(Notification.report_id == report_id)) is not None
