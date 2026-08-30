@@ -1,0 +1,6 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Report submitted | CrimeAlert{% endblock %}
+{% block dashboard_content %}
+<section class="mx-auto max-w-xl py-12 text-center"><div class="mx-auto grid h-16 w-16 place-items-center rounded-full bg-emerald-100 text-emerald-700"><svg class="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="m5 12 4.5 4.5L19 7"/></svg></div><p class="mt-6 text-sm font-bold uppercase tracking-wider text-emerald-700">Report received</p><h1 class="mt-2 font-display text-3xl font-extrabold tracking-tight text-ink">Your report was submitted successfully.</h1><p class="mt-3 text-slate-600">It is now awaiting review. You’ll be taken to your dashboard shortly.</p><a href="{{ dashboard_url }}" class="mt-7 inline-flex rounded-lg bg-brand-600 px-5 py-3 text-sm font-bold text-white hover:bg-brand-700">Go to my dashboard</a></section>
+{% endblock %}
+{% block inline_scripts %}{{ super() }}<script>window.setTimeout(() => { window.location.assign({{ dashboard_url|tojson }}); }, 2200);</script>{% endblock %}

@@ -135,8 +135,7 @@ def report_crime():  # type: ignore[no-untyped-def]
             db.session.rollback()
             flash("Media upload failed. Your report was not submitted.", "error")
         else:
-            flash("Your report has been submitted for review.", "success")
-            return redirect(url_for("web.dashboard"))
+            return render_template("user/report_submission_success.html", dashboard_url=url_for("web.dashboard"))
     return render_template("user/report_crime.html", form=form)
 
 

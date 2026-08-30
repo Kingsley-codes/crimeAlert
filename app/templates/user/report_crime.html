@@ -1,82 +1,31 @@
 {% extends "dashboard_base.html" %}
-
 {% block title %}Report a crime | CrimeAlert{% endblock %}
-
-{% block page_styles %}
-{{ super() }}
+{% block page_styles %}{{ super() }}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIINfQW2UgePMmYwZxflEveE/2R6pG1s4bM=" crossorigin="">
 <style>
-  /* Keep every Leaflet pane, tile and control clipped to the report form map. */
-  #location-map {
-    isolation: isolate;
-    overflow: hidden;
-    position: relative;
-    width: 100%;
-    height: 18rem;
-    z-index: 0;
-  }
-  #location-map.leaflet-container {
-    font: inherit;
-  }
-</style>
-{% endblock %}
-
+  #location-map { isolation: isolate; overflow: hidden; position: relative; width: 100%; height: 26rem; z-index: 0; }
+  #location-map.leaflet-container { font: inherit; }
+  /* Tailwind's responsive image rule breaks Leaflet's fixed-size map tiles. */
+  #location-map .leaflet-tile, #location-map .leaflet-marker-icon, #location-map .leaflet-shadow-pane img { max-width: none !important; max-height: none !important; }
+  .selected-location-marker { background: transparent; border: 0; } .selected-location-marker span { display: block; width: 20px; height: 20px; border: 4px solid #fff; border-radius: 9999px; background: #0e65ae; box-shadow: 0 0 0 6px rgba(14,101,174,.25); animation: selected-location-pulse 1.8s ease-out infinite; }
+  @keyframes selected-location-pulse { 0% { box-shadow: 0 0 0 0 rgba(14,101,174,.48); } 70% { box-shadow: 0 0 0 14px rgba(14,101,174,0); } 100% { box-shadow: 0 0 0 0 rgba(14,101,174,0); } }
+  @media (min-width: 1024px) { #location-map { height: 38rem; } }
+</style>{% endblock %}
 {% block dashboard_content %}
-<section class="mx-auto max-w-3xl">
-  <a href="{{ url_for('web.home') }}" class="text-sm font-medium text-blue-700 hover:underline">← Back to home</a>
-  <h1 class="mt-4 font-display text-3xl font-extrabold tracking-tight text-ink">Report a crime</h1>
-  <p class="mt-2 max-w-2xl text-slate-600">Provide the details you can safely share. Your report is reviewed before it is used in safety monitoring.</p>
-  <form method="post" enctype="multipart/form-data" class="mt-8 space-y-7 rounded-2xl border border-slate-200 bg-white p-5 shadow-soft sm:p-8" novalidate>
-    {{ form.hidden_tag() }}
-    <div>
-      <label for="crime_type" class="block text-sm font-semibold">Crime type</label>
-      {{ form.crime_type(class_="mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 shadow-sm outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-100", id="crime_type") }}
-      {% for error in form.crime_type.errors %}<p class="mt-1 text-sm text-red-600">{{ error }}</p>{% endfor %}
-    </div>
-    <div>
-      <label for="description" class="block text-sm font-semibold">Description</label>
-      {{ form.description(class_="mt-2 block min-h-32 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 shadow-sm outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-100", id="description", placeholder="Describe what happened and any details that can help.", maxlength="5000", required=true) }}
-      <p class="mt-1 text-xs text-slate-500">At least 10 characters. Do not include information that puts you at risk.</p>
-      {% for error in form.description.errors %}<p class="mt-1 text-sm text-red-600">{{ error }}</p>{% endfor %}
-    </div>
-    <div>
-      <label for="incident_datetime" class="block text-sm font-semibold">Date and time of incident</label>
-      {{ form.incident_datetime(type="datetime-local", class_="mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 shadow-sm outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-100", id="incident_datetime", required=true) }}
-      {% for error in form.incident_datetime.errors %}<p class="mt-1 text-sm text-red-600">{{ error }}</p>{% endfor %}
-    </div>
-    <div>
-      <div class="flex items-center justify-between gap-3"><label class="block text-sm font-semibold">Incident location</label><button type="button" id="current-location" class="text-sm font-semibold text-blue-700 hover:underline">Use my location</button></div>
-      <p class="mt-1 text-sm text-slate-600">Tap the map to place the pin, or use your current location.</p>
-      <div id="location-map" class="mt-3 rounded-xl border border-slate-300 shadow-sm" aria-label="Map for selecting incident location"></div>
-      <div class="mt-3 grid grid-cols-2 gap-3">
-        <div><label for="latitude" class="block text-sm font-medium">Latitude</label>{{ form.latitude(class_="mt-1 block w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2.5 text-slate-700 shadow-sm", id="latitude", readonly=true, required=true) }}{% for error in form.latitude.errors %}<p class="mt-1 text-sm text-red-600">{{ error }}</p>{% endfor %}</div>
-        <div><label for="longitude" class="block text-sm font-medium">Longitude</label>{{ form.longitude(class_="mt-1 block w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2.5 text-slate-700 shadow-sm", id="longitude", readonly=true, required=true) }}{% for error in form.longitude.errors %}<p class="mt-1 text-sm text-red-600">{{ error }}</p>{% endfor %}</div>
-      </div>
-      <p id="location-error" class="mt-2 hidden text-sm text-red-600" role="alert"></p>
-    </div>
-    <div>
-      <label for="media" class="block text-sm font-semibold">Photo or video <span class="font-normal text-slate-500">(optional)</span></label>
-      {{ form.media(class_="mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm file:mr-4 file:rounded-md file:border-0 file:bg-brand-50 file:px-3 file:py-1.5 file:font-semibold file:text-brand-700", id="media", accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime") }}
-      <p class="mt-1 text-xs text-slate-500">JPG, PNG, WebP, MP4, WebM, or MOV. Maximum {{ (config.REPORT_MAX_MEDIA_FILE_SIZE / 1024 / 1024)|round(0)|int }} MB.</p>
-      {% for error in form.media.errors %}<p class="mt-1 text-sm text-red-600">{{ error }}</p>{% endfor %}
-    </div>
-    <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 transition hover:border-brand-200 hover:bg-brand-50/50">
-      {{ form.is_anonymous(class_="mt-1 h-4 w-4 rounded border-slate-300 text-blue-700", id="is_anonymous") }}
-      <span><span class="block text-sm font-semibold text-ink">Report anonymously</span><span class="mt-1 block text-sm text-slate-600">Your account still securely owns this report, but your identity is not exposed in any public-facing use of it.</span></span>
-    </label>
-    {% for error in form.is_anonymous.errors %}<p class="text-sm text-red-600">{{ error }}</p>{% endfor %}
-    {{ form.submit(class_="w-full rounded-xl bg-brand-600 px-5 py-3.5 font-bold text-white shadow-sm transition hover:bg-brand-700 focus:outline-none focus:ring-4 focus:ring-brand-200") }}
-  </form>
-</section>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-<script>
-  const map = L.map('location-map').setView([6.5244, 3.3792], 12);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
-  let pin;
-  const latitude = document.getElementById('latitude'), longitude = document.getElementById('longitude'), locationError = document.getElementById('location-error');
-  function setLocation(lat, lng, zoom = true) { latitude.value = lat.toFixed(6); longitude.value = lng.toFixed(6); if (pin) pin.setLatLng([lat, lng]); else pin = L.marker([lat, lng]).addTo(map); if (zoom) map.setView([lat, lng], 16); locationError.classList.add('hidden'); }
-  map.on('click', event => setLocation(event.latlng.lat, event.latlng.lng, false));
-  document.getElementById('current-location').addEventListener('click', () => { if (!navigator.geolocation) { locationError.textContent = 'Location services are not available in this browser.'; locationError.classList.remove('hidden'); return; } navigator.geolocation.getCurrentPosition(position => setLocation(position.coords.latitude, position.coords.longitude), () => { locationError.textContent = 'We could not access your location. Please place the pin on the map.'; locationError.classList.remove('hidden'); }, { enableHighAccuracy: true, timeout: 10000 }); });
-  document.getElementById('media').addEventListener('change', event => { const file = event.target.files[0]; if (file && file.size > {{ config.REPORT_MAX_MEDIA_FILE_SIZE }}) { event.target.value = ''; alert('This file exceeds the allowed size.'); } });
-</script>
+<section class="mx-auto max-w-5xl"><a href="{{ url_for('web.home') }}" class="text-sm font-medium text-blue-700 hover:underline">← Back to home</a><h1 class="mt-4 font-display text-3xl font-extrabold tracking-tight text-ink">Report a crime</h1><p class="mt-2 max-w-2xl text-slate-600">Provide the details you can safely share. Your report is reviewed before it is used in safety monitoring.</p>
+<form id="report-form" method="post" enctype="multipart/form-data" class="mt-8 space-y-7 rounded-2xl border border-slate-200 bg-white p-5 shadow-soft sm:p-8" novalidate>{{ form.hidden_tag() }}
+  <div><label for="crime_type" class="block text-sm font-semibold">Crime type</label>{{ form.crime_type(class_="mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 shadow-sm outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-100", id="crime_type") }}{% for error in form.crime_type.errors %}<p class="mt-1 text-sm text-red-600">{{ error }}</p>{% endfor %}</div>
+  <div><label for="description" class="block text-sm font-semibold">Description</label>{{ form.description(class_="mt-2 block min-h-32 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 shadow-sm outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-100", id="description", placeholder="Describe what happened and any details that can help.", maxlength="5000", required=true) }}<p class="mt-1 text-xs text-slate-500">At least 10 characters. Do not include information that puts you at risk.</p>{% for error in form.description.errors %}<p class="mt-1 text-sm text-red-600">{{ error }}</p>{% endfor %}</div>
+  <div><label class="block text-sm font-semibold">Date and time of incident</label>{{ form.incident_datetime(type="hidden", id="incident_datetime") }}<button id="date-time-trigger" type="button" class="mt-2 flex w-full items-center justify-between rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-left shadow-sm transition hover:border-brand-400 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-100"><span id="date-time-value" class="text-sm text-slate-500">Choose date and time</span><svg class="h-5 w-5 text-brand-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg></button>{% for error in form.incident_datetime.errors %}<p class="mt-1 text-sm text-red-600">{{ error }}</p>{% endfor %}</div>
+  <div><div class="flex items-center justify-between gap-3"><label class="block text-sm font-semibold">Incident location</label><button type="button" id="current-location" class="text-sm font-semibold text-blue-700 hover:underline">Use my location</button></div><p class="mt-1 text-sm text-slate-600">Tap the map to place the pin, or use your current location.</p><div id="location-map" class="mt-3 rounded-xl border border-slate-300 shadow-sm" aria-label="Map for selecting incident location"></div><div class="mt-3 grid grid-cols-2 gap-3"><div><label for="latitude" class="block text-sm font-medium">Latitude</label>{{ form.latitude(class_="mt-1 block w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2.5 text-slate-700 shadow-sm", id="latitude", readonly=true, required=true) }}{% for error in form.latitude.errors %}<p class="mt-1 text-sm text-red-600">{{ error }}</p>{% endfor %}</div><div><label for="longitude" class="block text-sm font-medium">Longitude</label>{{ form.longitude(class_="mt-1 block w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2.5 text-slate-700 shadow-sm", id="longitude", readonly=true, required=true) }}{% for error in form.longitude.errors %}<p class="mt-1 text-sm text-red-600">{{ error }}</p>{% endfor %}</div></div><p id="location-error" class="mt-2 hidden text-sm text-red-600" role="alert"></p></div>
+  <div><label for="media" class="block text-sm font-semibold">Photo or video <span class="font-normal text-slate-500">(optional)</span></label>{{ form.media(class_="mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm file:mr-4 file:rounded-md file:border-0 file:bg-brand-50 file:px-3 file:py-1.5 file:font-semibold file:text-brand-700", id="media", accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime") }}<p class="mt-1 text-xs text-slate-500">JPG, PNG, WebP, MP4, WebM, or MOV. Maximum {{ (config.REPORT_MAX_MEDIA_FILE_SIZE / 1024 / 1024)|round(0)|int }} MB.</p>{% for error in form.media.errors %}<p class="mt-1 text-sm text-red-600">{{ error }}</p>{% endfor %}</div>
+  <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 transition hover:border-brand-200 hover:bg-brand-50/50">{{ form.is_anonymous(class_="mt-1 h-4 w-4 rounded border-slate-300 text-blue-700", id="is_anonymous") }}<span><span class="block text-sm font-semibold text-ink">Report anonymously</span><span class="mt-1 block text-sm text-slate-600">Your account still securely owns this report, but your identity is not exposed in any public-facing use of it.</span></span></label>{% for error in form.is_anonymous.errors %}<p class="text-sm text-red-600">{{ error }}</p>{% endfor %}
+  {{ form.submit(class_="w-full rounded-xl bg-brand-600 px-5 py-3.5 font-bold text-white shadow-sm transition hover:bg-brand-700 focus:outline-none focus:ring-4 focus:ring-brand-200", id="submit-report") }}<p id="submit-feedback" class="hidden text-center text-sm font-semibold text-brand-700" role="status">Submitting your report securely…</p>
+</form></section>
+<dialog id="date-time-dialog" class="w-[calc(100%-2rem)] max-w-md rounded-2xl border border-slate-200 p-0 shadow-2xl backdrop:bg-slate-950/45"><form method="dialog" class="p-6"><div class="flex items-start justify-between gap-4"><div><p class="text-xs font-bold uppercase tracking-wider text-brand-700">Incident details</p><h2 class="mt-1 font-display text-2xl font-extrabold text-ink">Choose date and time</h2></div><button value="cancel" class="rounded-lg p-2 text-slate-500 hover:bg-slate-100" aria-label="Close date and time picker">×</button></div><div class="mt-6 grid gap-4 sm:grid-cols-2"><label class="text-sm font-semibold text-slate-700">Date<input id="picker-date" type="date" class="mt-2 block w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm"></label><label class="text-sm font-semibold text-slate-700">Time<input id="picker-time" type="time" class="mt-2 block w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm"></label></div><p id="date-time-error" class="mt-3 hidden text-sm text-red-600" role="alert"></p><div class="mt-7 flex justify-end gap-3"><button value="cancel" class="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancel</button><button id="confirm-date-time" type="button" class="rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-brand-700">Done</button></div></form></dialog>
 {% endblock %}
+{% block inline_scripts %}{{ super() }}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script><script>
+const map=L.map('location-map').setView([6.5244,3.3792],12),locationIcon=L.divIcon({className:'selected-location-marker',html:'<span></span>',iconSize:[20,20],iconAnchor:[10,10]}); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map); let pin; const latitude=document.getElementById('latitude'),longitude=document.getElementById('longitude'),locationError=document.getElementById('location-error'); function setLocation(lat,lng,zoom=true){latitude.value=lat.toFixed(6);longitude.value=lng.toFixed(6);if(pin)pin.setLatLng([lat,lng]);else pin=L.marker([lat,lng],{icon:locationIcon,keyboard:false}).addTo(map);if(zoom)map.setView([lat,lng],16);locationError.classList.add('hidden');} map.on('click',event=>setLocation(event.latlng.lat,event.latlng.lng,false));window.addEventListener('load',()=>map.invalidateSize());new ResizeObserver(()=>map.invalidateSize()).observe(document.getElementById('location-map'));document.getElementById('current-location').addEventListener('click',()=>{if(!navigator.geolocation){locationError.textContent='Location services are not available in this browser.';locationError.classList.remove('hidden');return;}navigator.geolocation.getCurrentPosition(position=>setLocation(position.coords.latitude,position.coords.longitude),()=>{locationError.textContent='We could not access your location. Please place the pin on the map.';locationError.classList.remove('hidden');},{enableHighAccuracy:true,timeout:10000});});document.getElementById('media').addEventListener('change',event=>{const file=event.target.files[0];if(file&&file.size>{{ config.REPORT_MAX_MEDIA_FILE_SIZE }}){event.target.value='';alert('This file exceeds the allowed size.');}});
+const incidentDatetime=document.getElementById('incident_datetime'),dialog=document.getElementById('date-time-dialog'),pickerDate=document.getElementById('picker-date'),pickerTime=document.getElementById('picker-time'),dateTimeValue=document.getElementById('date-time-value'),dateTimeError=document.getElementById('date-time-error');function displayDateTime(value){if(!value){dateTimeValue.textContent='Choose date and time';dateTimeValue.className='text-sm text-slate-500';return;}dateTimeValue.textContent=new Date(value).toLocaleString([],{dateStyle:'medium',timeStyle:'short'});dateTimeValue.className='text-sm font-semibold text-ink';}displayDateTime(incidentDatetime.value);document.getElementById('date-time-trigger').addEventListener('click',()=>{const current=incidentDatetime.value||'';pickerDate.value=current.slice(0,10);pickerTime.value=current.slice(11,16);dateTimeError.classList.add('hidden');dialog.showModal();});document.getElementById('confirm-date-time').addEventListener('click',()=>{if(!pickerDate.value||!pickerTime.value){dateTimeError.textContent='Choose both a date and a time.';dateTimeError.classList.remove('hidden');return;}incidentDatetime.value=pickerDate.value+'T'+pickerTime.value;displayDateTime(incidentDatetime.value);dialog.close();});document.getElementById('report-form').addEventListener('submit',event=>{const errors=[];if(!incidentDatetime.value)errors.push('Choose the incident date and time.');if(!latitude.value||!longitude.value)errors.push('Choose the incident location on the map.');if(errors.length){event.preventDefault();locationError.textContent=errors.join(' ');locationError.classList.remove('hidden');return;}const button=document.getElementById('submit-report');button.disabled=true;button.value='Submitting…';document.getElementById('submit-feedback').classList.remove('hidden');});
+</script>{% endblock %}
