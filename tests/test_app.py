@@ -112,7 +112,7 @@ def test_my_reports_only_shows_owned_reports_in_newest_first_order():
             session["_user_id"] = str(owner.id)
             session["_fresh"] = True
 
-        response = client.get("/my-reports")
+        response = client.get("/dashboard/reports")
 
         assert response.status_code == 200
         assert b"Owner&#39;s newest report" in response.data
@@ -120,5 +120,5 @@ def test_my_reports_only_shows_owned_reports_in_newest_first_order():
         assert response.data.index(b"Owner&#39;s newest report") < response.data.index(b"Owner&#39;s older report")
         assert b"Other user&#39;s private report" not in response.data
         assert b"owner@example.com" not in response.data
-        assert client.get(f"/my-reports/{newer.id}").status_code == 200
-        assert client.get(f"/my-reports/{other.id}").status_code == 404
+        assert client.get(f"/dashboard/reports/{newer.id}").status_code == 200
+        assert client.get(f"/dashboard/reports/{other.id}").status_code == 404

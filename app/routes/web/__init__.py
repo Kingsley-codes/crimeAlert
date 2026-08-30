@@ -13,6 +13,7 @@ from app.models.crime_report import CrimeReport
 from app.models.report_media import ReportMedia
 from app.services.auth_service import authenticate_user, register_user
 from app.services.media_service import upload_report_media
+from app.utils.decorators import user_required
 
 
 web_bp = Blueprint("web", __name__)
@@ -43,8 +44,32 @@ def safety_guidance():  # type: ignore[no-untyped-def]
     return render_template("public/safety_guidance.html")
 
 
-@web_bp.get("/my-reports")
+def _dashboard_url() -> str:
+    """Return the correct landing page for the current authenticated role."""
+    return url_for("admin.dashboard") if current_user.role == "admin" else url_for("web.dashboard")
+
+
+@web_bp.get("/dashboard")
 @login_required
+def dashboard():  # type: ignore[no-untyped-def]
+    if current_user.role == "admin":
+        return redirect(url_for("admin.dashboard"))
+    reports = db.session.scalars(
+        db.select(CrimeReport)
+        .where(CrimeReport.reporter_id == current_user.id)
+        .order_by(CrimeReport.created_at.desc(), CrimeReport.id.desc())
+        .limit(5)
+    ).all()
+    stats = {
+        "total": db.session.scalar(db.select(db.func.count()).select_from(CrimeReport).where(CrimeReport.reporter_id == current_user.id)) or 0,
+        "pending": db.session.scalar(db.select(db.func.count()).select_from(CrimeReport).where(CrimeReport.reporter_id == current_user.id, CrimeReport.status == "pending")) or 0,
+        "approved": db.session.scalar(db.select(db.func.count()).select_from(CrimeReport).where(CrimeReport.reporter_id == current_user.id, CrimeReport.status == "approved")) or 0,
+    }
+    return render_template("user/dashboard.html", reports=reports, stats=stats)
+
+
+@web_bp.get("/dashboard/reports")
+@user_required
 def my_reports():  # type: ignore[no-untyped-def]
     """Show only the signed-in user's reports, including their anonymous ones."""
     reports = db.session.scalars(
@@ -55,8 +80,8 @@ def my_reports():  # type: ignore[no-untyped-def]
     return render_template("user/my_reports.html", reports=reports)
 
 
-@web_bp.get("/my-reports/<int:report_id>")
-@login_required
+@web_bp.get("/dashboard/reports/<int:report_id>")
+@user_required
 def my_report_detail(report_id: int):  # type: ignore[no-untyped-def]
     """Return a report only when it belongs to the signed-in user."""
     report = db.session.scalar(
@@ -65,6 +90,20 @@ def my_report_detail(report_id: int):  # type: ignore[no-untyped-def]
     if report is None:
         abort(404)
     return render_template("user/report_detail.html", report=report)
+
+
+@web_bp.get("/my-reports")
+@login_required
+def legacy_my_reports():  # type: ignore[no-untyped-def]
+    return redirect(_dashboard_url()) if current_user.role == "admin" else redirect(url_for("web.my_reports"))
+
+
+@web_bp.get("/my-reports/<int:report_id>")
+@login_required
+def legacy_my_report_detail(report_id: int):  # type: ignore[no-untyped-def]
+    if current_user.role == "admin":
+        return redirect(url_for("admin.dashboard"))
+    return redirect(url_for("web.my_report_detail", report_id=report_id))
 
 
 @web_bp.route("/report-crime", methods=["GET", "POST"])
@@ -114,7 +153,7 @@ def _safe_next_url(target: str | None) -> str | None:
 @web_bp.route("/register", methods=["GET", "POST"])
 def register():  # type: ignore[no-untyped-def]
     if current_user.is_authenticated:
-        return redirect(url_for("web.home"))
+        return redirect(_dashboard_url())
 
     form = RegistrationForm()
     if form.validate_on_submit():
@@ -125,14 +164,14 @@ def register():  # type: ignore[no-untyped-def]
         else:
             login_user(user)
             flash("Your account has been created.", "success")
-            return redirect(url_for("web.home"))
+            return redirect(url_for("web.dashboard"))
     return render_template("auth/register.html", form=form)
 
 
 @web_bp.route("/login", methods=["GET", "POST"])
 def login():  # type: ignore[no-untyped-def]
     if current_user.is_authenticated:
-        return redirect(url_for("web.home"))
+        return redirect(_dashboard_url())
 
     form = LoginForm()
     if form.validate_on_submit():
@@ -142,7 +181,10 @@ def login():  # type: ignore[no-untyped-def]
         else:
             login_user(user, remember=form.remember.data)
             flash("Signed in successfully.", "success")
-            return redirect(_safe_next_url(request.args.get("next")) or url_for("web.home"))
+            next_url = _safe_next_url(request.args.get("next"))
+            if next_url and not (user.role == "admin" and next_url.startswith("/dashboard")):
+                return redirect(next_url)
+            return redirect(_dashboard_url())
     return render_template("auth/login.html", form=form)
 
 

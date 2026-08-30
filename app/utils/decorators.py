@@ -17,3 +17,16 @@ def admin_required(view):  # type: ignore[no-untyped-def]
         return view(*args, **kwargs)
 
     return wrapped_view
+
+
+def user_required(view):  # type: ignore[no-untyped-def]
+    """Require an active standard user for a protected user-dashboard endpoint."""
+
+    @wraps(view)
+    @login_required
+    def wrapped_view(*args, **kwargs):  # type: ignore[no-untyped-def]
+        if not current_user.is_active or current_user.role != "user":
+            abort(403)
+        return view(*args, **kwargs)
+
+    return wrapped_view
