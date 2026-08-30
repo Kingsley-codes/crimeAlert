@@ -71,9 +71,9 @@ def _report_filters():  # type: ignore[no-untyped-def]
         statement = statement.where(CrimeReport.created_at >= datetime.combine(date_from, time.min, tzinfo=timezone.utc))
     if date_to:
         statement = statement.where(CrimeReport.created_at < datetime.combine(date_to + timedelta(days=1), time.min, tzinfo=timezone.utc))
-    reference_match = re.fullmatch(r"(?:CR|RPT)-?(\d+)", search, re.IGNORECASE)
+    reference_match = re.fullmatch(r"[0-9a-f]{10}", search, re.IGNORECASE)
     if reference_match:
-        statement = statement.where(CrimeReport.id == int(reference_match.group(1)))
+        statement = statement.where(CrimeReport.reference_code == search.upper())
     elif search:
         pattern = f"%{search}%"
         statement = statement.where(or_(CrimeReport.description.ilike(pattern), CrimeReport.crime_type.ilike(pattern), cast(CrimeReport.id, String).ilike(pattern)))
@@ -230,7 +230,10 @@ def user_management():  # type: ignore[no-untyped-def]
     statement = db.select(User).where(User.role == "user")
     if status in VALID_USER_STATUSES:
         statement = statement.where(User.is_active.is_(status == "active"))
-    if search:
+    user_reference_match = re.fullmatch(r"[0-9a-f]{10}", search, re.IGNORECASE)
+    if user_reference_match:
+        statement = statement.where(User.reference_code == search.upper())
+    elif search:
         pattern = f"%{search}%"
         statement = statement.where(or_(User.name.ilike(pattern), User.email.ilike(pattern), cast(User.id, String).ilike(pattern)))
     users = db.session.scalars(statement.order_by(User.created_at.desc(), User.id.desc())).all()

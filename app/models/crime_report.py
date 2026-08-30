@@ -1,12 +1,14 @@
 """Crime report persistence model."""
 
 from app.extensions import db
+from uuid import uuid4
 
 
 class CrimeReport(db.Model):
     __tablename__ = "crime_reports"
 
     id = db.Column(db.Integer, primary_key=True)
+    reference_code = db.Column(db.String(10), nullable=False, unique=True, index=True, default=lambda: uuid4().hex[:10].upper())
     reporter_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     is_anonymous = db.Column(db.Boolean, nullable=False, server_default=db.false())
     crime_type = db.Column(db.String(100), db.ForeignKey("crime_types.name", onupdate="CASCADE"), nullable=False)
@@ -44,8 +46,3 @@ class CrimeReport(db.Model):
     def public_reporter(self):  # type: ignore[no-untyped-def]
         """Never reveal an opted-out reporter through public-facing views."""
         return None if self.is_anonymous else self.reporter
-
-    @property
-    def reference_code(self) -> str:
-        """Return the stable, human-readable identifier used in administration views."""
-        return f"CR-{self.id:06d}"
