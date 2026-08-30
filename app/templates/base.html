@@ -12,6 +12,7 @@
     <script>
       tailwind.config = { theme: { extend: { colors: { ink: '#10233f', brand: { 50: '#eef7ff', 100: '#d9edff', 500: '#1677c8', 600: '#0e65ae', 700: '#0b528e' } }, fontFamily: { sans: ['DM Sans', 'sans-serif'], display: ['Manrope', 'sans-serif'] }, boxShadow: { soft: '0 18px 50px rgba(16, 35, 63, .10)' } } } }
     </script>
+    <style>.leaflet-container img { max-width: none !important; max-height: none !important; }</style>
     {% block page_styles %}{% endblock %}
   </head>
   <body class="min-h-screen bg-slate-50 font-sans text-slate-900 antialiased">
