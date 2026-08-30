@@ -1,10 +1,10 @@
-{% extends "base.html" %}
+{% extends "dashboard_base.html" %}
 
 {% block title %}Report details | CrimeAlert{% endblock %}
 
-{% block content %}
+{% block dashboard_content %}
 {% set status_classes = {'pending': 'bg-slate-100 text-slate-700', 'approved': 'bg-emerald-100 text-emerald-800', 'rejected': 'bg-red-100 text-red-800'} %}
-<section class="mx-auto max-w-2xl px-4 py-8 sm:py-12">
+<section class="max-w-2xl">
   <a href="{{ url_for('web.my_reports') }}" class="text-sm font-semibold text-blue-700 hover:underline">← My reports</a>
   <article class="mt-5 rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-7">
     <div class="flex items-start justify-between gap-4">

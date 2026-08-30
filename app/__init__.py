@@ -1,6 +1,8 @@
 """CrimeAlert application factory."""
 
+import click
 from flask import Flask, render_template
+from werkzeug.security import generate_password_hash
 
 from app.config import Config
 from app.extensions import csrf, db, login_manager, migrate
@@ -42,6 +44,23 @@ def create_app(config_overrides: dict | None = None) -> Flask:
     app.register_blueprint(web_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(api_bp)
+
+    @app.cli.command("create-admin")
+    @click.option("--name", prompt="Administrator name", help="Display name for the administrator.")
+    @click.option("--email", prompt="Administrator email", help="Unique administrator email address.")
+    @click.password_option(confirmation_prompt=True)
+    def create_admin(name: str, email: str, password: str) -> None:
+        """Create a new active administrator account."""
+        from app.models.user import User
+        from app.services.auth_service import normalize_email
+
+        normalized_email = normalize_email(email)
+        if db.session.scalar(db.select(User).where(User.email == normalized_email)) is not None:
+            raise click.ClickException("An account already exists for this email address.")
+        admin = User(name=name.strip(), email=normalized_email, password_hash=generate_password_hash(password), role="admin")
+        db.session.add(admin)
+        db.session.commit()
+        click.echo(f"Administrator created for {normalized_email}.")
 
     register_error_handlers(app)
     return app

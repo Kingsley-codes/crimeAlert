@@ -17,6 +17,8 @@
   <body class="min-h-screen bg-slate-50 font-sans text-slate-900 antialiased">
     {% set current_endpoint = request.endpoint %}
     {% set dashboard_active = current_endpoint in ['web.dashboard', 'web.my_reports', 'web.my_report_detail', 'admin.dashboard'] %}
+    {% set is_dashboard = dashboard_active %}
+    {% if not is_dashboard %}
     <header class="sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur">
       <nav class="mx-auto flex h-[4.5rem] max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8" aria-label="Main navigation">
         <a href="{{ url_for('web.home') }}" class="flex items-center gap-2.5" aria-label="CrimeAlert home">
@@ -34,12 +36,10 @@
         </div>
         <div class="hidden items-center gap-3 lg:flex">
           {% if current_user.is_authenticated %}
-            {% if current_user.role == 'admin' %}
-              <a href="{{ url_for('admin.dashboard') }}" {% if dashboard_active %}aria-current="page"{% endif %} class="text-sm font-semibold {% if dashboard_active %}text-brand-700{% else %}text-slate-700 hover:text-brand-700{% endif %}">Admin dashboard</a>
-            {% else %}
-              <a href="{{ url_for('web.dashboard') }}" {% if dashboard_active %}aria-current="page"{% endif %} class="text-sm font-semibold {% if dashboard_active %}text-brand-700{% else %}text-slate-700 hover:text-brand-700{% endif %}">My dashboard</a>
-            {% endif %}
-            <form method="post" action="{{ url_for('web.logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="text-sm font-semibold text-slate-700 hover:text-brand-700">Sign out</button></form>
+            <details class="relative">
+              <summary class="flex cursor-pointer list-none items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-100"><span class="grid h-7 w-7 place-items-center rounded-full bg-ink text-xs text-white">{{ current_user.name[:1]|upper }}</span><span>{{ current_user.name }}</span><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
+              <div class="absolute right-0 mt-2 w-52 rounded-xl border border-slate-200 bg-white p-2 shadow-lg"><a href="{{ url_for('admin.dashboard') if current_user.role == 'admin' else url_for('web.dashboard') }}" class="block rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100">{{ 'Admin dashboard' if current_user.role == 'admin' else 'My dashboard' }}</a><form method="post" action="{{ url_for('web.logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="w-full rounded-lg px-3 py-2 text-left text-sm font-semibold text-slate-700 hover:bg-slate-100">Sign out</button></form></div>
+            </details>
           {% else %}
             <a href="{{ url_for('web.login') }}" {% if current_endpoint == 'web.login' %}aria-current="page"{% endif %} class="rounded-lg px-3 py-2 text-sm font-semibold {% if current_endpoint == 'web.login' %}bg-brand-50 text-brand-700{% else %}text-slate-700 hover:bg-slate-100{% endif %}">Sign in</a>
           {% endif %}
@@ -54,11 +54,12 @@
           <a href="{{ url_for('web.how_it_works') }}" {% if current_endpoint == 'web.how_it_works' %}aria-current="page"{% endif %} class="rounded-lg px-3 py-3 text-sm font-semibold {% if current_endpoint == 'web.how_it_works' %}bg-brand-50 text-brand-700{% else %}hover:bg-brand-50{% endif %}">How it works</a>
           <a href="{{ url_for('web.about') }}" {% if current_endpoint == 'web.about' %}aria-current="page"{% endif %} class="rounded-lg px-3 py-3 text-sm font-semibold {% if current_endpoint == 'web.about' %}bg-brand-50 text-brand-700{% else %}hover:bg-brand-50{% endif %}">About us</a>
           <a href="{{ url_for('web.safety_guidance') }}" {% if current_endpoint == 'web.safety_guidance' %}aria-current="page"{% endif %} class="rounded-lg px-3 py-3 text-sm font-semibold {% if current_endpoint == 'web.safety_guidance' %}bg-brand-50 text-brand-700{% else %}hover:bg-brand-50{% endif %}">Safety guidance</a>
-          {% if current_user.is_authenticated %}<a href="{{ url_for('admin.dashboard') if current_user.role == 'admin' else url_for('web.dashboard') }}" {% if dashboard_active %}aria-current="page"{% endif %} class="rounded-lg px-3 py-3 text-sm font-semibold {% if dashboard_active %}bg-brand-50 text-brand-700{% else %}hover:bg-brand-50{% endif %}">{{ 'Admin dashboard' if current_user.role == 'admin' else 'My dashboard' }}</a><form method="post" action="{{ url_for('web.logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="w-full rounded-lg px-3 py-3 text-left text-sm font-semibold hover:bg-brand-50">Sign out</button></form>{% else %}<a href="{{ url_for('web.login') }}" {% if current_endpoint == 'web.login' %}aria-current="page"{% endif %} class="rounded-lg px-3 py-3 text-sm font-semibold {% if current_endpoint == 'web.login' %}bg-brand-50 text-brand-700{% else %}hover:bg-brand-50{% endif %}">Sign in</a>{% endif %}
+          {% if current_user.is_authenticated %}<details class="rounded-lg"><summary class="cursor-pointer list-none rounded-lg px-3 py-3 text-sm font-semibold hover:bg-brand-50">{{ current_user.name }} <span aria-hidden="true">⌄</span></summary><div class="grid gap-1 px-1 pb-1"><a href="{{ url_for('admin.dashboard') if current_user.role == 'admin' else url_for('web.dashboard') }}" class="rounded-lg px-3 py-3 text-sm font-semibold hover:bg-brand-50">{{ 'Admin dashboard' if current_user.role == 'admin' else 'My dashboard' }}</a><form method="post" action="{{ url_for('web.logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="w-full rounded-lg px-3 py-3 text-left text-sm font-semibold hover:bg-brand-50">Sign out</button></form></div></details>{% else %}<a href="{{ url_for('web.login') }}" {% if current_endpoint == 'web.login' %}aria-current="page"{% endif %} class="rounded-lg px-3 py-3 text-sm font-semibold {% if current_endpoint == 'web.login' %}bg-brand-50 text-brand-700{% else %}hover:bg-brand-50{% endif %}">Sign in</a>{% endif %}
           <a href="{{ url_for('web.report_crime') }}" {% if current_endpoint == 'web.report_crime' %}aria-current="page"{% endif %} class="mt-2 rounded-lg bg-brand-600 px-4 py-3 text-center text-sm font-bold text-white {% if current_endpoint == 'web.report_crime' %}ring-2 ring-brand-200 ring-offset-2{% endif %}">Report a crime</a>
         </div>
       </div>
     </header>
+    {% endif %}
     <main>
       <div class="mx-auto max-w-5xl px-6 pt-6">
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -69,12 +70,12 @@
       </div>
       {% block content %}{% endblock %}
     </main>
-    {% block footer %}<footer class="border-t border-slate-200 bg-white">
+    {% if not is_dashboard %}{% block footer %}<footer class="border-t border-slate-200 bg-white">
       <div class="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
         <div><div class="font-display font-extrabold text-ink">CrimeAlert</div><p class="mt-1 text-sm text-slate-500">Community reporting for safer, better-informed places.</p></div>
         <div class="flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold text-slate-600"><a href="{{ url_for('web.about') }}" class="hover:text-brand-700">About</a><a href="{{ url_for('web.how_it_works') }}" class="hover:text-brand-700">How it works</a><a href="{{ url_for('web.safety_guidance') }}" class="hover:text-brand-700">Safety guidance</a></div>
       </div>
-    </footer>{% endblock %}
+    </footer>{% endblock %}{% endif %}
     <script>
       const menuButton = document.getElementById('mobile-menu-button');
       const mobileMenu = document.getElementById('mobile-menu');

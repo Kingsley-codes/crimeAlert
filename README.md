@@ -16,6 +16,17 @@ CrimeAlert is a Flask foundation for a crime location reporting system. The proj
 
 The home page is available at `http://127.0.0.1:5000/`.
 
+## Administrator access
+
+The administrator sign-in page is available at `http://127.0.0.1:5000/admin/login`.
+Create administrators only from a trusted terminal after applying the database migrations:
+
+```powershell
+flask --app run.py create-admin --name "Admin Name" --email admin@example.com
+```
+
+The command securely prompts for a password and creates an active account with the `admin` role. Administrators then sign in at `/admin/login` and are sent to `/admin/dashboard`.
+
 ## Database configuration
 
 `DATABASE_URL` is the sole application database setting. Use a PostgreSQL URL such as:

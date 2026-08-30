@@ -1,9 +1,9 @@
-{% extends "base.html" %}
+{% extends "dashboard_base.html" %}
 
 {% block title %}My dashboard | CrimeAlert{% endblock %}
 
-{% block content %}
-<section class="mx-auto max-w-6xl px-4 py-8 sm:py-12">
+{% block dashboard_content %}
+<section>
   <div class="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
     <div><p class="text-sm font-bold uppercase tracking-wider text-brand-700">My dashboard</p><h1 class="mt-2 font-display text-3xl font-extrabold text-ink">Welcome back, {{ current_user.name }}.</h1><p class="mt-2 text-slate-600">Review your submissions and their current status.</p></div>
     <a href="{{ url_for('web.report_crime') }}" class="rounded-lg bg-brand-600 px-4 py-3 text-sm font-bold text-white hover:bg-brand-700">New report</a>
