@@ -1,7 +1,7 @@
 {% extends "dashboard_base.html" %}
 {% block title %}Report a crime | CrimeAlert{% endblock %}
 {% block page_styles %}{{ super() }}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIINfQW2UgePMYwZxflEveE/2R6pG1s4M=" crossorigin="">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/leaflet.css') }}">
 <style>
   #location-map { isolation: isolate; overflow: hidden; position: relative; width: 100%; height: 26rem; z-index: 0; }
   #location-map.leaflet-container { font: inherit; }
