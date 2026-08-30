@@ -1,6 +1,7 @@
 """Administrator authentication, dashboard, and report-management routes."""
 
 from datetime import date, datetime, time, timedelta, timezone
+import re
 
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_user
@@ -35,6 +36,50 @@ def _json_error(message: str, status: int = 400):
 def _parse_filter_date(value: str | None) -> date | None:
     if not value:
         return None
+
+
+def _report_filters():  # type: ignore[no-untyped-def]
+    """Apply report-management filters consistently to full and asynchronous table views."""
+    status = request.args.get("status", "").strip().lower()
+    crime_type = request.args.get("crime_type", "").strip().lower()
+    risk_level = request.args.get("risk_level", "").strip().lower()
+    search = request.args.get("search", "").strip()
+    period = request.args.get("period", "").strip().lower()
+    today = datetime.now(timezone.utc).date()
+    date_from = _parse_filter_date(request.args.get("date_from"))
+    date_to = _parse_filter_date(request.args.get("date_to"))
+    if period == "today":
+        date_from = date_to = today
+    elif period == "yesterday":
+        date_from = date_to = today - timedelta(days=1)
+    elif period == "last_7_days":
+        date_from, date_to = today - timedelta(days=6), today
+    elif period == "last_30_days":
+        date_from, date_to = today - timedelta(days=29), today
+    elif period == "this_month":
+        date_from, date_to = today.replace(day=1), today
+    elif period != "custom":
+        date_from = date_to = None
+    statement = db.select(CrimeReport)
+    if status in {"pending", "approved", "rejected"}:
+        statement = statement.where(CrimeReport.status == status)
+    if crime_type:
+        statement = statement.where(CrimeReport.crime_type == crime_type)
+    if risk_level in VALID_RISK_LEVELS:
+        statement = statement.where(CrimeReport.risk_level == risk_level)
+    if date_from:
+        statement = statement.where(CrimeReport.created_at >= datetime.combine(date_from, time.min, tzinfo=timezone.utc))
+    if date_to:
+        statement = statement.where(CrimeReport.created_at < datetime.combine(date_to + timedelta(days=1), time.min, tzinfo=timezone.utc))
+    reference_match = re.fullmatch(r"(?:CR|RPT)-?(\d+)", search, re.IGNORECASE)
+    if reference_match:
+        statement = statement.where(CrimeReport.id == int(reference_match.group(1)))
+    elif search:
+        pattern = f"%{search}%"
+        statement = statement.where(or_(CrimeReport.description.ilike(pattern), CrimeReport.crime_type.ilike(pattern), cast(CrimeReport.id, String).ilike(pattern)))
+    reports = db.session.scalars(statement.order_by(CrimeReport.created_at.desc(), CrimeReport.id.desc())).all()
+    crime_types = db.session.scalars(db.select(CrimeType).where(CrimeType.is_active.is_(True)).order_by(CrimeType.name)).all()
+    return reports, crime_types
 
 
 def _map_payload(report: CrimeReport) -> dict[str, object]:
@@ -149,31 +194,16 @@ def dashboard():  # type: ignore[no-untyped-def]
 @admin_required
 def report_management():  # type: ignore[no-untyped-def]
     """List reports with server-side filtering for administrative review."""
-    status = request.args.get("status", "").strip().lower()
-    crime_type = request.args.get("crime_type", "").strip().lower()
-    risk_level = request.args.get("risk_level", "").strip().lower()
-    search = request.args.get("search", "").strip()
-    date_from = _parse_filter_date(request.args.get("date_from"))
-    date_to = _parse_filter_date(request.args.get("date_to"))
-    statement = db.select(CrimeReport)
-    if status in {"pending", "approved", "rejected"}:
-        statement = statement.where(CrimeReport.status == status)
-    if crime_type:
-        statement = statement.where(CrimeReport.crime_type == crime_type)
-    if risk_level in VALID_RISK_LEVELS:
-        statement = statement.where(CrimeReport.risk_level == risk_level)
-    if date_from:
-        statement = statement.where(CrimeReport.created_at >= datetime.combine(date_from, time.min, tzinfo=timezone.utc))
-    if date_to:
-        statement = statement.where(CrimeReport.created_at < datetime.combine(date_to + timedelta(days=1), time.min, tzinfo=timezone.utc))
-    if search:
-        pattern = f"%{search}%"
-        statement = statement.where(
-            or_(CrimeReport.description.ilike(pattern), CrimeReport.crime_type.ilike(pattern), cast(CrimeReport.id, String).ilike(pattern))
-        )
-    reports = db.session.scalars(statement.order_by(CrimeReport.created_at.desc(), CrimeReport.id.desc())).all()
-    crime_types = db.session.scalars(db.select(CrimeType).where(CrimeType.is_active.is_(True)).order_by(CrimeType.name)).all()
+    reports, crime_types = _report_filters()
     return render_template("admin/report_management.html", reports=reports, crime_types=crime_types)
+
+
+@admin_bp.get("/reports/table")
+@admin_required
+def report_management_table():  # type: ignore[no-untyped-def]
+    """Render only report results so filtering does not reload the dashboard shell."""
+    reports, crime_types = _report_filters()
+    return render_template("admin/_report_table.html", reports=reports, crime_types=crime_types)
 
 
 @admin_bp.get("/map-analytics")

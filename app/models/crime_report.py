@@ -44,3 +44,8 @@ class CrimeReport(db.Model):
     def public_reporter(self):  # type: ignore[no-untyped-def]
         """Never reveal an opted-out reporter through public-facing views."""
         return None if self.is_anonymous else self.reporter
+
+    @property
+    def reference_code(self) -> str:
+        """Return the stable, human-readable identifier used in administration views."""
+        return f"CR-{self.id:06d}"

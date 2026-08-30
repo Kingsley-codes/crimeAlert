@@ -28,5 +28,10 @@ class User(UserMixin, db.Model):
         """Return whether the account may establish or retain a session."""
         return bool(self.is_active)
 
+    @property
+    def reference_code(self) -> str:
+        """Return the stable, human-readable identifier used in administration views."""
+        return f"USR-{self.id:06d}"
+
     def __repr__(self) -> str:
         return f"<User id={self.id} email={self.email!r} role={self.role!r}>"
