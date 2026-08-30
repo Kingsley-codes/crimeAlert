@@ -1,8 +1,9 @@
-{% extends "base.html" %}
+{% extends "dashboard_base.html" %}
 
 {% block title %}Report a crime | CrimeAlert{% endblock %}
 
 {% block page_styles %}
+{{ super() }}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIINfQW2UgePMmYwZxflEveE/2R6pG1s4bM=" crossorigin="">
 <style>
   /* Keep every Leaflet pane, tile and control clipped to the report form map. */
@@ -20,51 +21,51 @@
 </style>
 {% endblock %}
 
-{% block content %}
-<section class="mx-auto max-w-2xl px-4 py-8 sm:py-12">
+{% block dashboard_content %}
+<section class="mx-auto max-w-3xl">
   <a href="{{ url_for('web.home') }}" class="text-sm font-medium text-blue-700 hover:underline">← Back to home</a>
-  <h1 class="mt-4 text-3xl font-bold tracking-tight">Report a crime</h1>
-  <p class="mt-2 text-slate-600">Your report will be reviewed before it is published.</p>
-  <form method="post" enctype="multipart/form-data" class="mt-8 space-y-6 rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-7" novalidate>
+  <h1 class="mt-4 font-display text-3xl font-extrabold tracking-tight text-ink">Report a crime</h1>
+  <p class="mt-2 max-w-2xl text-slate-600">Provide the details you can safely share. Your report is reviewed before it is used in safety monitoring.</p>
+  <form method="post" enctype="multipart/form-data" class="mt-8 space-y-7 rounded-2xl border border-slate-200 bg-white p-5 shadow-soft sm:p-8" novalidate>
     {{ form.hidden_tag() }}
     <div>
       <label for="crime_type" class="block text-sm font-semibold">Crime type</label>
-      {{ form.crime_type(class_="mt-2 block w-full rounded-lg border-slate-300", id="crime_type") }}
+      {{ form.crime_type(class_="mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 shadow-sm outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-100", id="crime_type") }}
       {% for error in form.crime_type.errors %}<p class="mt-1 text-sm text-red-600">{{ error }}</p>{% endfor %}
     </div>
     <div>
       <label for="description" class="block text-sm font-semibold">Description</label>
-      {{ form.description(class_="mt-2 block min-h-32 w-full rounded-lg border-slate-300", id="description", placeholder="Describe what happened and any details that can help.", maxlength="5000", required=true) }}
+      {{ form.description(class_="mt-2 block min-h-32 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 shadow-sm outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-100", id="description", placeholder="Describe what happened and any details that can help.", maxlength="5000", required=true) }}
       <p class="mt-1 text-xs text-slate-500">At least 10 characters. Do not include information that puts you at risk.</p>
       {% for error in form.description.errors %}<p class="mt-1 text-sm text-red-600">{{ error }}</p>{% endfor %}
     </div>
     <div>
       <label for="incident_datetime" class="block text-sm font-semibold">Date and time of incident</label>
-      {{ form.incident_datetime(type="datetime-local", class_="mt-2 block w-full rounded-lg border-slate-300", id="incident_datetime", required=true) }}
+      {{ form.incident_datetime(type="datetime-local", class_="mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 shadow-sm outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-100", id="incident_datetime", required=true) }}
       {% for error in form.incident_datetime.errors %}<p class="mt-1 text-sm text-red-600">{{ error }}</p>{% endfor %}
     </div>
     <div>
       <div class="flex items-center justify-between gap-3"><label class="block text-sm font-semibold">Incident location</label><button type="button" id="current-location" class="text-sm font-semibold text-blue-700 hover:underline">Use my location</button></div>
       <p class="mt-1 text-sm text-slate-600">Tap the map to place the pin, or use your current location.</p>
-      <div id="location-map" class="mt-3 rounded-lg border border-slate-300" aria-label="Map for selecting incident location"></div>
+      <div id="location-map" class="mt-3 rounded-xl border border-slate-300 shadow-sm" aria-label="Map for selecting incident location"></div>
       <div class="mt-3 grid grid-cols-2 gap-3">
-        <div><label for="latitude" class="block text-sm font-medium">Latitude</label>{{ form.latitude(class_="mt-1 block w-full rounded-lg border-slate-300", id="latitude", readonly=true, required=true) }}{% for error in form.latitude.errors %}<p class="mt-1 text-sm text-red-600">{{ error }}</p>{% endfor %}</div>
-        <div><label for="longitude" class="block text-sm font-medium">Longitude</label>{{ form.longitude(class_="mt-1 block w-full rounded-lg border-slate-300", id="longitude", readonly=true, required=true) }}{% for error in form.longitude.errors %}<p class="mt-1 text-sm text-red-600">{{ error }}</p>{% endfor %}</div>
+        <div><label for="latitude" class="block text-sm font-medium">Latitude</label>{{ form.latitude(class_="mt-1 block w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2.5 text-slate-700 shadow-sm", id="latitude", readonly=true, required=true) }}{% for error in form.latitude.errors %}<p class="mt-1 text-sm text-red-600">{{ error }}</p>{% endfor %}</div>
+        <div><label for="longitude" class="block text-sm font-medium">Longitude</label>{{ form.longitude(class_="mt-1 block w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2.5 text-slate-700 shadow-sm", id="longitude", readonly=true, required=true) }}{% for error in form.longitude.errors %}<p class="mt-1 text-sm text-red-600">{{ error }}</p>{% endfor %}</div>
       </div>
       <p id="location-error" class="mt-2 hidden text-sm text-red-600" role="alert"></p>
     </div>
     <div>
       <label for="media" class="block text-sm font-semibold">Photo or video <span class="font-normal text-slate-500">(optional)</span></label>
-      {{ form.media(class_="mt-2 block w-full text-sm", id="media", accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime") }}
+      {{ form.media(class_="mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm file:mr-4 file:rounded-md file:border-0 file:bg-brand-50 file:px-3 file:py-1.5 file:font-semibold file:text-brand-700", id="media", accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime") }}
       <p class="mt-1 text-xs text-slate-500">JPG, PNG, WebP, MP4, WebM, or MOV. Maximum {{ (config.REPORT_MAX_MEDIA_FILE_SIZE / 1024 / 1024)|round(0)|int }} MB.</p>
       {% for error in form.media.errors %}<p class="mt-1 text-sm text-red-600">{{ error }}</p>{% endfor %}
     </div>
-    <label class="flex cursor-pointer items-start gap-3 rounded-lg bg-slate-50 p-4">
+    <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 transition hover:border-brand-200 hover:bg-brand-50/50">
       {{ form.is_anonymous(class_="mt-1 h-4 w-4 rounded border-slate-300 text-blue-700", id="is_anonymous") }}
-      <span><span class="block text-sm font-semibold">Report anonymously</span><span class="mt-1 block text-sm text-slate-600">Leave this on to keep your identity off this report. Turn it off to submit as the signed-in account.</span></span>
+      <span><span class="block text-sm font-semibold text-ink">Report anonymously</span><span class="mt-1 block text-sm text-slate-600">Your account still securely owns this report, but your identity is not exposed in any public-facing use of it.</span></span>
     </label>
     {% for error in form.is_anonymous.errors %}<p class="text-sm text-red-600">{{ error }}</p>{% endfor %}
-    {{ form.submit(class_="w-full rounded-lg bg-blue-700 px-5 py-3 font-semibold text-white hover:bg-blue-800") }}
+    {{ form.submit(class_="w-full rounded-xl bg-brand-600 px-5 py-3.5 font-bold text-white shadow-sm transition hover:bg-brand-700 focus:outline-none focus:ring-4 focus:ring-brand-200") }}
   </form>
 </section>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>

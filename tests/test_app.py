@@ -148,3 +148,23 @@ def test_login_redirects_each_role_to_its_dashboard():
     assert admin_response.status_code == 302
     assert admin_response.headers["Location"].endswith("/admin/dashboard")
     assert admin_client.get("/admin/dashboard").status_code == 200
+
+
+def test_report_crime_is_a_user_dashboard_screen():
+    app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": "sqlite://", "WTF_CSRF_ENABLED": False})
+    with app.app_context():
+        db.create_all()
+        user = User(name="Member", email="member@example.com", password_hash="hash", role="user")
+        db.session.add(user)
+        db.session.commit()
+        user_id = user.id
+
+    client = app.test_client()
+    with client.session_transaction() as session:
+        session["_user_id"] = str(user_id)
+        session["_fresh"] = True
+
+    response = client.get("/dashboard/report-crime")
+    assert response.status_code == 200
+    assert b"Report anonymously" in response.data
+    assert client.get("/report-crime").status_code == 302

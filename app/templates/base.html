@@ -16,7 +16,7 @@
   </head>
   <body class="min-h-screen bg-slate-50 font-sans text-slate-900 antialiased">
     {% set current_endpoint = request.endpoint %}
-    {% set dashboard_active = current_endpoint in ['web.dashboard', 'web.my_reports', 'web.my_report_detail', 'admin.dashboard'] %}
+    {% set dashboard_active = current_endpoint in ['web.dashboard', 'web.my_reports', 'web.my_report_detail', 'web.report_crime', 'admin.dashboard'] %}
     {% set is_dashboard = dashboard_active %}
     {% if not is_dashboard %}
     <header class="sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur">
@@ -47,7 +47,7 @@
         </div>
         <button id="mobile-menu-button" type="button" class="rounded-lg p-2 text-ink hover:bg-slate-100 lg:hidden" aria-controls="mobile-menu" aria-expanded="false"><span class="sr-only">Open navigation menu</span><svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
       </nav>
-      <div id="mobile-menu" class="hidden border-t border-slate-200 bg-white px-4 py-4 shadow-lg lg:hidden">
+      <div id="mobile-menu" hidden class="border-t border-slate-200 bg-white px-4 py-4 shadow-lg lg:hidden">
         <div class="mx-auto grid max-w-7xl gap-1">
           <a href="{{ url_for('web.home') }}" {% if current_endpoint == 'web.home' %}aria-current="page"{% endif %} class="rounded-lg px-3 py-3 text-sm font-semibold {% if current_endpoint == 'web.home' %}bg-brand-50 text-brand-700{% else %}hover:bg-brand-50{% endif %}">Home</a>
           <a href="{{ url_for('web.public_map') }}" {% if current_endpoint == 'web.public_map' %}aria-current="page"{% endif %} class="rounded-lg px-3 py-3 text-sm font-semibold {% if current_endpoint == 'web.public_map' %}bg-brand-50 text-brand-700{% else %}hover:bg-brand-50{% endif %}">Map view</a>
@@ -79,7 +79,7 @@
     <script>
       const menuButton = document.getElementById('mobile-menu-button');
       const mobileMenu = document.getElementById('mobile-menu');
-      menuButton?.addEventListener('click', () => { const isOpen = !mobileMenu.classList.toggle('hidden'); menuButton.setAttribute('aria-expanded', String(isOpen)); });
+      menuButton?.addEventListener('click', () => { const isOpen = mobileMenu.hidden; mobileMenu.hidden = !isOpen; menuButton.setAttribute('aria-expanded', String(isOpen)); });
       document.querySelectorAll('[data-password-toggle]').forEach((toggle) => {
         toggle.addEventListener('click', () => {
           const input = document.getElementById(toggle.getAttribute('aria-controls'));
