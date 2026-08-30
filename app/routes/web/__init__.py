@@ -23,6 +23,11 @@ def home():  # type: ignore[no-untyped-def]
     return render_template("user/home.html")
 
 
+@web_bp.get("/map")
+def public_map():  # type: ignore[no-untyped-def]
+    return render_template("public/map.html")
+
+
 @web_bp.get("/about")
 def about():  # type: ignore[no-untyped-def]
     return render_template("public/about.html")

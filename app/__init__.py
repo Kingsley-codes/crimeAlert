@@ -36,10 +36,12 @@ def create_app(config_overrides: dict | None = None) -> Flask:
         return user if user is not None and user.can_authenticate else None
 
     from app.routes.admin import admin_bp
+    from app.routes.api import api_bp
     from app.routes.web import web_bp
 
     app.register_blueprint(web_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(api_bp)
 
     register_error_handlers(app)
     return app

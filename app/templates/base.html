@@ -27,6 +27,7 @@
         </a>
         <div class="hidden items-center gap-7 lg:flex">
           <a href="{{ url_for('web.home') }}" {% if current_endpoint == 'web.home' %}aria-current="page"{% endif %} class="text-sm font-semibold transition {% if current_endpoint == 'web.home' %}text-brand-700{% else %}text-slate-600 hover:text-brand-700{% endif %}">Home</a>
+          <a href="{{ url_for('web.public_map') }}" {% if current_endpoint == 'web.public_map' %}aria-current="page"{% endif %} class="text-sm font-semibold transition {% if current_endpoint == 'web.public_map' %}text-brand-700{% else %}text-slate-600 hover:text-brand-700{% endif %}">Map view</a>
           <a href="{{ url_for('web.how_it_works') }}" {% if current_endpoint == 'web.how_it_works' %}aria-current="page"{% endif %} class="text-sm font-semibold transition {% if current_endpoint == 'web.how_it_works' %}text-brand-700{% else %}text-slate-600 hover:text-brand-700{% endif %}">How it works</a>
           <a href="{{ url_for('web.about') }}" {% if current_endpoint == 'web.about' %}aria-current="page"{% endif %} class="text-sm font-semibold transition {% if current_endpoint == 'web.about' %}text-brand-700{% else %}text-slate-600 hover:text-brand-700{% endif %}">About us</a>
           <a href="{{ url_for('web.safety_guidance') }}" {% if current_endpoint == 'web.safety_guidance' %}aria-current="page"{% endif %} class="text-sm font-semibold transition {% if current_endpoint == 'web.safety_guidance' %}text-brand-700{% else %}text-slate-600 hover:text-brand-700{% endif %}">Safety guidance</a>
@@ -45,6 +46,7 @@
       <div id="mobile-menu" class="hidden border-t border-slate-200 bg-white px-4 py-4 shadow-lg lg:hidden">
         <div class="mx-auto grid max-w-7xl gap-1">
           <a href="{{ url_for('web.home') }}" {% if current_endpoint == 'web.home' %}aria-current="page"{% endif %} class="rounded-lg px-3 py-3 text-sm font-semibold {% if current_endpoint == 'web.home' %}bg-brand-50 text-brand-700{% else %}hover:bg-brand-50{% endif %}">Home</a>
+          <a href="{{ url_for('web.public_map') }}" {% if current_endpoint == 'web.public_map' %}aria-current="page"{% endif %} class="rounded-lg px-3 py-3 text-sm font-semibold {% if current_endpoint == 'web.public_map' %}bg-brand-50 text-brand-700{% else %}hover:bg-brand-50{% endif %}">Map view</a>
           <a href="{{ url_for('web.how_it_works') }}" {% if current_endpoint == 'web.how_it_works' %}aria-current="page"{% endif %} class="rounded-lg px-3 py-3 text-sm font-semibold {% if current_endpoint == 'web.how_it_works' %}bg-brand-50 text-brand-700{% else %}hover:bg-brand-50{% endif %}">How it works</a>
           <a href="{{ url_for('web.about') }}" {% if current_endpoint == 'web.about' %}aria-current="page"{% endif %} class="rounded-lg px-3 py-3 text-sm font-semibold {% if current_endpoint == 'web.about' %}bg-brand-50 text-brand-700{% else %}hover:bg-brand-50{% endif %}">About us</a>
           <a href="{{ url_for('web.safety_guidance') }}" {% if current_endpoint == 'web.safety_guidance' %}aria-current="page"{% endif %} class="rounded-lg px-3 py-3 text-sm font-semibold {% if current_endpoint == 'web.safety_guidance' %}bg-brand-50 text-brand-700{% else %}hover:bg-brand-50{% endif %}">Safety guidance</a>
@@ -63,12 +65,12 @@
       </div>
       {% block content %}{% endblock %}
     </main>
-    <footer class="border-t border-slate-200 bg-white">
+    {% block footer %}<footer class="border-t border-slate-200 bg-white">
       <div class="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
         <div><div class="font-display font-extrabold text-ink">CrimeAlert</div><p class="mt-1 text-sm text-slate-500">Community reporting for safer, better-informed places.</p></div>
         <div class="flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold text-slate-600"><a href="{{ url_for('web.about') }}" class="hover:text-brand-700">About</a><a href="{{ url_for('web.how_it_works') }}" class="hover:text-brand-700">How it works</a><a href="{{ url_for('web.safety_guidance') }}" class="hover:text-brand-700">Safety guidance</a></div>
       </div>
-    </footer>
+    </footer>{% endblock %}
     <script>
       const menuButton = document.getElementById('mobile-menu-button');
       const mobileMenu = document.getElementById('mobile-menu');
@@ -111,5 +113,6 @@
         });
       });
     </script>
+    {% block inline_scripts %}{% endblock %}
   </body>
 </html>

@@ -20,7 +20,49 @@ def test_home_page_loads():
     response = app.test_client().get("/")
 
     assert response.status_code == 200
-    assert b"Crime Reporting System" in response.data
+    assert b"A clearer way to report what matters" in response.data
+
+
+def test_public_map_api_returns_only_approved_privacy_minimised_reports():
+    app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": "sqlite://"})
+    with app.app_context():
+        db.create_all()
+        db.session.add(CrimeType(name="theft"))
+        db.session.add_all(
+            [
+                CrimeReport(
+                    crime_type="theft",
+                    description="Approved report description must not be public.",
+                    latitude=6.524456,
+                    longitude=3.379234,
+                    incident_datetime=datetime(2026, 8, 20, 10, 0),
+                    status="approved",
+                    risk_level="high",
+                ),
+                CrimeReport(
+                    crime_type="theft",
+                    description="Pending reports must never appear on the public map.",
+                    latitude=6.500001,
+                    longitude=3.300001,
+                    incident_datetime=datetime(2026, 8, 21, 10, 0),
+                    status="pending",
+                    risk_level="low",
+                ),
+            ]
+        )
+        db.session.commit()
+
+        response = app.test_client().get("/api/public-reports?risk_level=high")
+
+        assert response.status_code == 200
+        assert len(response.json["reports"]) == 1
+        assert response.json["reports"][0] == {
+            "crime_type": "theft",
+            "incident_datetime": "2026-08-20T10:00:00",
+            "latitude": 6.52,
+            "longitude": 3.38,
+            "risk_level": "high",
+        }
 
 
 def test_my_reports_only_shows_owned_reports_in_newest_first_order():
