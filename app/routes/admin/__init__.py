@@ -1,4 +1,4 @@
-"""Administrator authentication routes; dashboard routes are intentionally deferred."""
+"""Administrator authentication and dashboard routes."""
 
 from flask import Blueprint, flash, redirect, render_template, url_for
 from flask_login import current_user, login_user
@@ -17,6 +17,8 @@ admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 def login():  # type: ignore[no-untyped-def]
     if current_user.is_authenticated and current_user.role == "admin" and current_user.is_active:
         return redirect(url_for("admin.dashboard"))
+    if current_user.is_authenticated:
+        return redirect(url_for("web.dashboard"))
 
     form = LoginForm()
     if form.validate_on_submit():

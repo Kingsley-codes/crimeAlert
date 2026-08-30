@@ -5,6 +5,7 @@ from app.extensions import db
 from app.models.crime_report import CrimeReport
 from app.models.crime_type import CrimeType
 from app.models.user import User
+from werkzeug.security import generate_password_hash
 
 
 def test_factory_uses_database_url_configuration():
@@ -122,3 +123,28 @@ def test_my_reports_only_shows_owned_reports_in_newest_first_order():
         assert b"owner@example.com" not in response.data
         assert client.get(f"/dashboard/reports/{newer.id}").status_code == 200
         assert client.get(f"/dashboard/reports/{other.id}").status_code == 404
+
+
+def test_login_redirects_each_role_to_its_dashboard():
+    app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": "sqlite://", "WTF_CSRF_ENABLED": False})
+    with app.app_context():
+        db.create_all()
+        db.session.add_all(
+            [
+                User(name="Member", email="member@example.com", password_hash=generate_password_hash("password"), role="user"),
+                User(name="Admin", email="admin@example.com", password_hash=generate_password_hash("password"), role="admin"),
+            ]
+        )
+        db.session.commit()
+
+    user_client = app.test_client()
+    user_response = user_client.post("/login", data={"email": "member@example.com", "password": "password"})
+    assert user_response.status_code == 302
+    assert user_response.headers["Location"].endswith("/dashboard")
+    assert user_client.get("/dashboard").status_code == 200
+
+    admin_client = app.test_client()
+    admin_response = admin_client.post("/admin/login", data={"email": "admin@example.com", "password": "password"})
+    assert admin_response.status_code == 302
+    assert admin_response.headers["Location"].endswith("/admin/dashboard")
+    assert admin_client.get("/admin/dashboard").status_code == 200

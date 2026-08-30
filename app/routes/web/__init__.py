@@ -138,7 +138,7 @@ def report_crime():  # type: ignore[no-untyped-def]
                 flash("Media upload failed. Your report was not submitted.", "error")
             else:
                 flash("Your report has been submitted for review.", "success")
-                return redirect(url_for("web.home"))
+                return redirect(_dashboard_url() if current_user.is_authenticated else url_for("web.home"))
     return render_template("user/report_crime.html", form=form)
 
 
