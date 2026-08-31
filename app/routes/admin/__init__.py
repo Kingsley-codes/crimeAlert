@@ -201,7 +201,7 @@ def login():  # type: ignore[no-untyped-def]
 @admin_bp.get("/dashboard")
 @admin_required
 def dashboard():  # type: ignore[no-untyped-def]
-    """Show administrators the current review workload and 30-day trend."""
+    """Show the overview, including the project-required trend analytics."""
     today = datetime.now(timezone.utc).date()
     month_start = today.replace(day=1)
     trend_start = today - timedelta(days=29)
@@ -229,12 +229,30 @@ def dashboard():  # type: ignore[no-untyped-def]
         "approved": db.session.scalar(db.select(db.func.count()).select_from(CrimeReport).where(CrimeReport.status == "approved")) or 0,
         "most_common": most_common.title() if most_common else "No reports yet",
     }
+    trend_reports, trend_period, trend_from, trend_to = _trend_reports()
+    trend_volume: dict[str, int] = {}
+    trend_crimes: dict[str, int] = {}
+    trend_risks = {level: 0 for level in ("high", "medium", "low")}
+    for report in trend_reports:
+        label = report.created_at.strftime("%d %b")
+        trend_volume[label] = trend_volume.get(label, 0) + 1
+        trend_crimes[report.crime_type] = trend_crimes.get(report.crime_type, 0) + 1
+        trend_risks[report.risk_level] = trend_risks.get(report.risk_level, 0) + 1
+    crime_types = db.session.scalars(db.select(CrimeType).where(CrimeType.is_active.is_(True)).order_by(CrimeType.name)).all()
     return render_template(
         "admin/dashboard.html",
         reports=reports,
         stats=stats,
         trend_labels=[day.strftime("%d %b") for day in daily_counts],
         trend_values=list(daily_counts.values()),
+        analytics_period=trend_period,
+        analytics_from=trend_from,
+        analytics_to=trend_to,
+        analytics_crime_types=crime_types,
+        analytics_volume_labels=list(trend_volume),
+        analytics_volume_values=list(trend_volume.values()),
+        analytics_crime_counts=trend_crimes,
+        analytics_risk_counts=trend_risks,
     )
 
 
@@ -292,21 +310,11 @@ def map_analytics_data():  # type: ignore[no-untyped-def]
 @admin_bp.get("/trend-reports")
 @admin_required
 def trend_reports():  # type: ignore[no-untyped-def]
-    """Daily, weekly, and monthly report analytics for administrators."""
-    reports, period, date_from, date_to = _trend_reports()
-    volume: dict[str, int] = {}
-    crime_counts: dict[str, int] = {}
-    risk_counts = {level: 0 for level in ("high", "medium", "low")}
-    for report in reports:
-        label = report.created_at.strftime("%d %b")
-        volume[label] = volume.get(label, 0) + 1
-        crime_counts[report.crime_type] = crime_counts.get(report.crime_type, 0) + 1
-        risk_counts[report.risk_level] = risk_counts.get(report.risk_level, 0) + 1
-    crime_types = db.session.scalars(db.select(CrimeType).where(CrimeType.is_active.is_(True)).order_by(CrimeType.name)).all()
-    return render_template("admin/trend_reports.html", reports=reports, period=period, date_from=date_from, date_to=date_to, crime_types=crime_types, volume_labels=list(volume), volume_values=list(volume.values()), crime_counts=crime_counts, risk_counts=risk_counts, hotspots=_hotspots(reports))
+    """Keep old links working while analytics lives on the Overview screen."""
+    return redirect(url_for("admin.dashboard", **request.args))
 
 
-@admin_bp.get("/trend-reports/export.csv")
+@admin_bp.get("/dashboard/export.csv")
 @admin_required
 def trend_reports_export():  # type: ignore[no-untyped-def]
     """Export only the current filtered admin analytics dataset, without reporter data."""

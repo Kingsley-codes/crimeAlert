@@ -39,7 +39,7 @@ Primary navigation on mobile: **Home**, **Map**, **Report**, **Updates**, **Prof
 
 ### Admin app
 
-Desktop-first left navigation: **Overview**, **Report queue**, **Map & hotspots**, **Analytics**, **Users**, **Exports**, **Activity log**, **Settings**.
+Desktop-first left navigation: **Overview**, **Report management**, **Crime map analytics**, **User management**, and **Settings**. Trend analytics and the CSV export belong on **Overview**; they are not a separate navigation destination.
 
 The report queue is the operational centre. A reviewer should be able to open a report, inspect its timeline and evidence, set classification/risk/status, leave an internal note, and complete a decision without losing queue context.
 
@@ -87,7 +87,7 @@ Requirements:
 
 ### Admin overview and queue
 
-- Overview: KPI cards for total reports, pending reports, verified incidents, hotspot areas, leading category, and time-based trend. Cards must link to the underlying filtered view.
+- Overview: KPI cards for total reports, pending reports, verified incidents, and leading category; a report-management-style filter bar; daily/weekly/monthly trend analytics; a server-side CSV export of the currently filtered authorized dataset; and a full-width hotspot map. The overview hotspot map mirrors the administrative map and includes every report status.
 - Queue: filterable table/list with status, category, submitted time, approximate area, risk, reporter preference, and assigned reviewer.
 - Detail view: structured incident facts, map, evidence preview, status history, related reports, audit trail, and decision controls.
 - Destructive or consequential actions (reject, delete, publish, change risk) require confirmation and capture a reason where appropriate.
