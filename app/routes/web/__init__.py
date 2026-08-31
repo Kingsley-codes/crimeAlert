@@ -11,13 +11,30 @@ from app.forms.auth import LoginForm, RegistrationForm
 from app.forms.report import CrimeReportForm
 from app.extensions import db
 from app.models.crime_report import CrimeReport
+from app.models.crime_type import CrimeType
 from app.models.report_media import ReportMedia
+from app.models.system_setting import SystemSetting
 from app.services.auth_service import authenticate_user, register_user
 from app.services.media_service import upload_report_media
 from app.utils.decorators import user_required
 
 
 web_bp = Blueprint("web", __name__)
+
+
+def _report_form() -> CrimeReportForm:
+    form = CrimeReportForm()
+    crime_types = db.session.scalars(
+        db.select(CrimeType.name).where(CrimeType.is_active.is_(True)).order_by(CrimeType.name)
+    ).all()
+    if crime_types:
+        form.set_crime_type_choices(crime_types)
+    return form
+
+
+def _anonymous_reporting_allowed() -> bool:
+    setting = db.session.get(SystemSetting, "anonymous_reporting_allowed")
+    return setting is None or setting.value.lower() == "true"
 
 
 @web_bp.get("/")
@@ -110,7 +127,7 @@ def legacy_my_report_detail(report_id: UUID):  # type: ignore[no-untyped-def]
 @web_bp.route("/dashboard/report-crime", methods=["GET", "POST"])
 @user_required
 def report_crime():  # type: ignore[no-untyped-def]
-    form = CrimeReportForm()
+    form = _report_form()
     if form.validate_on_submit():
         try:
             report = CrimeReport(
@@ -144,7 +161,10 @@ def report_crime():  # type: ignore[no-untyped-def]
 @web_bp.route("/report-crime", methods=["GET", "POST"])
 def public_report_crime():  # type: ignore[no-untyped-def]
     """Accept anonymous public reports without requiring an account."""
-    form = CrimeReportForm()
+    if not _anonymous_reporting_allowed():
+        flash("Anonymous reporting is currently unavailable. Please sign in to submit a report.", "warning")
+        return redirect(url_for("web.login"))
+    form = _report_form()
     if form.validate_on_submit():
         try:
             report = CrimeReport(

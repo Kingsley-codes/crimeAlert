@@ -10,7 +10,7 @@ from wtforms import BooleanField, SelectField, StringField, SubmitField, TextAre
 from wtforms.validators import DataRequired, Length, Optional, ValidationError
 
 
-CRIME_TYPES = ("theft", "robbery", "kidnapping", "assault", "other")
+CRIME_TYPES = ("theft", "robbery", "kidnapping", "assault", "other")  # fallback for an unseeded database
 MEDIA_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "mp4", "webm", "mov"}
 EXECUTABLE_EXTENSIONS = {"bat", "cmd", "com", "dll", "exe", "js", "msi", "php", "ps1", "py", "sh", "vbs"}
 
@@ -25,6 +25,10 @@ class CrimeReportForm(FlaskForm):
     is_anonymous = BooleanField("Submit anonymously", default=True)
     media = FileField("Photo or video", validators=[Optional()])
     submit = SubmitField("Submit report")
+
+    def set_crime_type_choices(self, crime_types: list[str]) -> None:
+        """Use the active administrator-managed categories for validation and display."""
+        self.crime_type.choices = [(name, name.title()) for name in crime_types]
 
     def validate_incident_datetime(self, field: StringField) -> None:
         try:
