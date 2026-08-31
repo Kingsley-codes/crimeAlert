@@ -151,8 +151,16 @@ def test_login_redirects_each_role_to_its_dashboard():
     assert admin_response.headers["Location"].endswith("/admin/dashboard")
     assert admin_client.get("/admin/dashboard").status_code == 200
 
+    wrong_user_portal = app.test_client().post("/login", data={"email": "admin@example.com", "password": "password"})
+    assert wrong_user_portal.status_code == 200
+    assert b"incorrect sign-in portal" in wrong_user_portal.data
 
-def test_report_crime_is_a_user_dashboard_screen():
+    wrong_admin_portal = app.test_client().post("/admin/login", data={"email": "member@example.com", "password": "password"})
+    assert wrong_admin_portal.status_code == 200
+    assert b"Invalid credentials or account access" in wrong_admin_portal.data
+
+
+def test_public_and_dashboard_reporting_pages_are_separate():
     app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": "sqlite://", "WTF_CSRF_ENABLED": False})
     with app.app_context():
         db.create_all()
@@ -169,7 +177,44 @@ def test_report_crime_is_a_user_dashboard_screen():
     response = client.get("/dashboard/report-crime")
     assert response.status_code == 200
     assert b"Report anonymously" in response.data
-    assert client.get("/report-crime").status_code == 302
+    public_client = app.test_client()
+    public_response = public_client.get("/report-crime")
+    assert public_response.status_code == 200
+    assert b"Anonymous public report" in public_response.data
+
+
+def test_public_report_is_anonymous_and_has_no_owner():
+    app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": "sqlite://", "WTF_CSRF_ENABLED": False})
+    with app.app_context():
+        db.create_all()
+        db.session.add(CrimeType(name="theft"))
+        db.session.commit()
+
+    response = app.test_client().post(
+        "/report-crime",
+        data={"crime_type": "theft", "title": "Public theft report", "description": "A public anonymous report.", "incident_datetime": "2026-08-20T10:00", "latitude": "6.5244", "longitude": "3.3792"},
+    )
+    assert response.status_code == 302
+    with app.app_context():
+        report = db.session.scalar(db.select(CrimeReport))
+        assert report is not None
+        assert report.reporter_id is None
+        assert report.is_anonymous is True
+
+
+def test_reference_codes_use_user_and_crime_prefixes():
+    app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": "sqlite://"})
+    with app.app_context():
+        db.create_all()
+        db.session.add(CrimeType(name="theft"))
+        user = User(name="Member", email="member@example.com", password_hash="hash")
+        db.session.add(user)
+        db.session.flush()
+        report = CrimeReport(reporter_id=user.id, crime_type="theft", description="A prefixed report code.", latitude=6.5, longitude=3.3, incident_datetime=datetime(2026, 8, 1, 9, 0))
+        db.session.add(report)
+        db.session.flush()
+        assert user.reference_code.startswith("USR-")
+        assert report.reference_code.startswith("CR-")
 
 
 def test_admin_report_action_creates_audit_log_and_notification():

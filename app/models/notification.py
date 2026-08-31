@@ -7,8 +7,8 @@ class Notification(db.Model):
     __tablename__ = "notifications"
 
     id = db.Column(db.Integer, primary_key=True)
-    recipient_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    report_id = db.Column(db.Integer, db.ForeignKey("crime_reports.id", ondelete="SET NULL"), nullable=True, index=True)
+    recipient_id = db.Column(db.Uuid(as_uuid=True), db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    report_id = db.Column(db.Uuid(as_uuid=True), db.ForeignKey("crime_reports.id", ondelete="SET NULL"), nullable=True, index=True)
     notification_type = db.Column(db.String(100), nullable=False)
     title = db.Column(db.String(255), nullable=False)
     message = db.Column(db.Text, nullable=False)

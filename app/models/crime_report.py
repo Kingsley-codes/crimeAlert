@@ -1,17 +1,19 @@
 """Crime report persistence model."""
 
+from uuid import UUID, uuid4
+
 from app.extensions import db
-from uuid import uuid4
 
 
 class CrimeReport(db.Model):
     __tablename__ = "crime_reports"
 
-    id = db.Column(db.Integer, primary_key=True)
-    reference_code = db.Column(db.String(10), nullable=False, unique=True, index=True, default=lambda: uuid4().hex[:10].upper())
-    reporter_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    id = db.Column(db.Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    reference_code = db.Column(db.String(13), nullable=False, unique=True, index=True, default=lambda: f"CR-{uuid4().hex[:10].upper()}")
+    reporter_id = db.Column(db.Uuid(as_uuid=True), db.ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     is_anonymous = db.Column(db.Boolean, nullable=False, server_default=db.false())
     crime_type = db.Column(db.String(100), db.ForeignKey("crime_types.name", onupdate="CASCADE"), nullable=False)
+    title = db.Column(db.String(200), nullable=False, default="Untitled report")
     description = db.Column(db.Text, nullable=False)
     latitude = db.Column(db.Numeric(8, 6), nullable=False)
     longitude = db.Column(db.Numeric(9, 6), nullable=False)

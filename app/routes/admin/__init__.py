@@ -2,6 +2,7 @@
 
 from datetime import date, datetime, time, timedelta, timezone
 import re
+from uuid import UUID
 
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_user
@@ -26,7 +27,7 @@ VALID_USER_STATUSES = {"active", "suspended"}
 
 def _report_payload(report: CrimeReport) -> dict[str, object]:
     """Return the client-safe report fields used by management AJAX updates."""
-    return {"id": report.id, "status": report.status, "risk_level": report.risk_level, "crime_type": report.crime_type}
+    return {"id": str(report.id), "status": report.status, "risk_level": report.risk_level, "crime_type": report.crime_type, "title": report.title}
 
 
 def _json_error(message: str, status: int = 400):
@@ -71,13 +72,13 @@ def _report_filters():  # type: ignore[no-untyped-def]
         statement = statement.where(CrimeReport.created_at >= datetime.combine(date_from, time.min, tzinfo=timezone.utc))
     if date_to:
         statement = statement.where(CrimeReport.created_at < datetime.combine(date_to + timedelta(days=1), time.min, tzinfo=timezone.utc))
-    reference_match = re.fullmatch(r"[0-9a-f]{10}", search, re.IGNORECASE)
+    reference_match = re.fullmatch(r"CR-[0-9a-f]{10}", search, re.IGNORECASE)
     if reference_match:
         statement = statement.where(CrimeReport.reference_code == search.upper())
     elif search:
         pattern = f"%{search}%"
-        statement = statement.where(or_(CrimeReport.description.ilike(pattern), CrimeReport.crime_type.ilike(pattern), cast(CrimeReport.id, String).ilike(pattern)))
-    reports = db.session.scalars(statement.order_by(CrimeReport.created_at.desc(), CrimeReport.id.desc())).all()
+        statement = statement.where(or_(CrimeReport.title.ilike(pattern), CrimeReport.description.ilike(pattern), CrimeReport.crime_type.ilike(pattern)))
+    reports = db.session.scalars(statement.order_by(CrimeReport.created_at.desc())).all()
     crime_types = db.session.scalars(db.select(CrimeType).where(CrimeType.is_active.is_(True)).order_by(CrimeType.name)).all()
     return reports, crime_types
 
@@ -85,7 +86,9 @@ def _report_filters():  # type: ignore[no-untyped-def]
 def _map_payload(report: CrimeReport) -> dict[str, object]:
     """Return full-location report data exclusively for the admin analytics map."""
     return {
-        "id": report.id,
+        "id": str(report.id),
+        "reference_code": report.reference_code,
+        "title": report.title,
         "crime_type": report.crime_type,
         "incident_datetime": report.incident_datetime.isoformat(),
         "risk_level": report.risk_level,
@@ -158,7 +161,7 @@ def dashboard():  # type: ignore[no-untyped-def]
     month_start = today.replace(day=1)
     trend_start = today - timedelta(days=29)
     reports = db.session.scalars(
-        db.select(CrimeReport).order_by(CrimeReport.created_at.desc(), CrimeReport.id.desc()).limit(8)
+        db.select(CrimeReport).order_by(CrimeReport.created_at.desc()).limit(8)
     ).all()
     recent_reports = db.session.scalars(
         db.select(CrimeReport).where(CrimeReport.created_at >= datetime.combine(trend_start, time.min, tzinfo=timezone.utc))
@@ -206,6 +209,26 @@ def report_management_table():  # type: ignore[no-untyped-def]
     return render_template("admin/_report_table.html", reports=reports, crime_types=crime_types)
 
 
+@admin_bp.get("/reports/<uuid:report_id>/details")
+@admin_required
+def report_details(report_id: UUID):  # type: ignore[no-untyped-def]
+    """Return the full private detail needed by the report-review dialog."""
+    report = db.session.get(CrimeReport, report_id)
+    if report is None:
+        return _json_error("Report not found.", 404)
+    return jsonify({
+        **_report_payload(report),
+        "reference_code": report.reference_code,
+        "description": report.description,
+        "incident_datetime": report.incident_datetime.isoformat(),
+        "created_at": report.created_at.isoformat(),
+        "latitude": float(report.latitude),
+        "longitude": float(report.longitude),
+        "is_anonymous": report.is_anonymous,
+        "reporter": None if report.reporter is None or report.is_anonymous else {"name": report.reporter.name, "email": report.reporter.email},
+    })
+
+
 @admin_bp.get("/map-analytics")
 @admin_required
 def map_analytics():  # type: ignore[no-untyped-def]
@@ -217,7 +240,7 @@ def map_analytics():  # type: ignore[no-untyped-def]
 @admin_required
 def map_analytics_data():  # type: ignore[no-untyped-def]
     """Return all reports and the five busiest coordinate-grid zones for administrators."""
-    reports = db.session.scalars(db.select(CrimeReport).order_by(CrimeReport.incident_datetime.desc(), CrimeReport.id.desc())).all()
+    reports = db.session.scalars(db.select(CrimeReport).order_by(CrimeReport.incident_datetime.desc())).all()
     return jsonify({"reports": [_map_payload(report) for report in reports], "hotspots": _hotspots(reports)})
 
 
@@ -230,13 +253,13 @@ def user_management():  # type: ignore[no-untyped-def]
     statement = db.select(User).where(User.role == "user")
     if status in VALID_USER_STATUSES:
         statement = statement.where(User.is_active.is_(status == "active"))
-    user_reference_match = re.fullmatch(r"[0-9a-f]{10}", search, re.IGNORECASE)
+    user_reference_match = re.fullmatch(r"USR-[0-9a-f]{10}", search, re.IGNORECASE)
     if user_reference_match:
         statement = statement.where(User.reference_code == search.upper())
     elif search:
         pattern = f"%{search}%"
-        statement = statement.where(or_(User.name.ilike(pattern), User.email.ilike(pattern), cast(User.id, String).ilike(pattern)))
-    users = db.session.scalars(statement.order_by(User.created_at.desc(), User.id.desc())).all()
+        statement = statement.where(or_(User.name.ilike(pattern), User.email.ilike(pattern)))
+    users = db.session.scalars(statement.order_by(User.created_at.desc())).all()
     report_counts = dict(
         db.session.execute(
             db.select(CrimeReport.reporter_id, db.func.count(CrimeReport.id))
@@ -247,9 +270,9 @@ def user_management():  # type: ignore[no-untyped-def]
     return render_template("admin/user_management.html", users=users, report_counts=report_counts)
 
 
-@admin_bp.get("/users/<int:user_id>")
+@admin_bp.get("/users/<uuid:user_id>")
 @admin_required
-def user_report_history(user_id: int):  # type: ignore[no-untyped-def]
+def user_report_history(user_id: UUID):  # type: ignore[no-untyped-def]
     """Show an administrator the full retained report history for one standard user."""
     user = db.session.scalar(db.select(User).where(User.id == user_id, User.role == "user"))
     if user is None:
@@ -257,14 +280,14 @@ def user_report_history(user_id: int):  # type: ignore[no-untyped-def]
 
         abort(404)
     reports = db.session.scalars(
-        db.select(CrimeReport).where(CrimeReport.reporter_id == user.id).order_by(CrimeReport.created_at.desc(), CrimeReport.id.desc())
+        db.select(CrimeReport).where(CrimeReport.reporter_id == user.id).order_by(CrimeReport.created_at.desc())
     ).all()
     return render_template("admin/user_report_history.html", user=user, reports=reports)
 
 
-@admin_bp.post("/users/<int:user_id>/status")
+@admin_bp.post("/users/<uuid:user_id>/status")
 @admin_required
-def update_user_status(user_id: int):  # type: ignore[no-untyped-def]
+def update_user_status(user_id: UUID):  # type: ignore[no-untyped-def]
     """Suspend or reactivate a standard user while retaining every related report."""
     payload = request.get_json(silent=True)
     action = str(payload.get("action", "")).strip().lower() if isinstance(payload, dict) else ""
@@ -286,9 +309,9 @@ def update_user_status(user_id: int):  # type: ignore[no-untyped-def]
     return jsonify({"ok": True, "message": f"{user.name}'s account was {'reactivated' if new_active else 'suspended'}.", "is_active": user.is_active})
 
 
-@admin_bp.post("/reports/<int:report_id>/actions")
+@admin_bp.post("/reports/<uuid:report_id>/actions")
 @admin_required
-def update_report(report_id: int):  # type: ignore[no-untyped-def]
+def update_report(report_id: UUID):  # type: ignore[no-untyped-def]
     """Apply one validated administrative report action and return a JSON result."""
     payload = request.get_json(silent=True)
     if not isinstance(payload, dict):

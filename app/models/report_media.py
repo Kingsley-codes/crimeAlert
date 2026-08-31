@@ -7,7 +7,7 @@ class ReportMedia(db.Model):
     __tablename__ = "report_media"
 
     id = db.Column(db.Integer, primary_key=True)
-    report_id = db.Column(db.Integer, db.ForeignKey("crime_reports.id", ondelete="CASCADE"), nullable=False, index=True)
+    report_id = db.Column(db.Uuid(as_uuid=True), db.ForeignKey("crime_reports.id", ondelete="CASCADE"), nullable=False, index=True)
     file_path = db.Column(db.String(1024), nullable=False)
     media_type = db.Column(db.String(20), nullable=False)
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, server_default=db.func.now())

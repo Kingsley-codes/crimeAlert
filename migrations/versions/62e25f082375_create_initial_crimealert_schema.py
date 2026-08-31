@@ -41,7 +41,7 @@ def upgrade():
     sa.UniqueConstraint('phone')
     )
     op.create_table('users',
-    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('id', sa.Uuid(), nullable=False),
     sa.Column('name', sa.String(length=150), nullable=False),
     sa.Column('email', sa.String(length=255), nullable=False),
     sa.Column('password_hash', sa.String(length=255), nullable=False),
@@ -56,9 +56,10 @@ def upgrade():
         batch_op.create_index(batch_op.f('ix_users_email'), ['email'], unique=True)
 
     op.create_table('crime_reports',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('reporter_id', sa.Integer(), nullable=True),
+    sa.Column('id', sa.Uuid(), nullable=False),
+    sa.Column('reporter_id', sa.Uuid(), nullable=True),
     sa.Column('crime_type', sa.String(length=100), nullable=False),
+    sa.Column('title', sa.String(length=200), nullable=False),
     sa.Column('description', sa.Text(), nullable=False),
     sa.Column('latitude', sa.Numeric(precision=8, scale=6), nullable=False),
     sa.Column('longitude', sa.Numeric(precision=9, scale=6), nullable=False),
@@ -85,9 +86,9 @@ def upgrade():
 
     op.create_table('admin_logs',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('admin_id', sa.Integer(), nullable=False),
+    sa.Column('admin_id', sa.Uuid(), nullable=False),
     sa.Column('action', sa.String(length=255), nullable=False),
-    sa.Column('target_report_id', sa.Integer(), nullable=True),
+    sa.Column('target_report_id', sa.Uuid(), nullable=True),
     sa.Column('timestamp', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.ForeignKeyConstraint(['admin_id'], ['users.id'], ondelete='RESTRICT'),
     sa.ForeignKeyConstraint(['target_report_id'], ['crime_reports.id'], ondelete='SET NULL'),
@@ -100,8 +101,8 @@ def upgrade():
 
     op.create_table('notifications',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('recipient_id', sa.Integer(), nullable=False),
-    sa.Column('report_id', sa.Integer(), nullable=True),
+    sa.Column('recipient_id', sa.Uuid(), nullable=False),
+    sa.Column('report_id', sa.Uuid(), nullable=True),
     sa.Column('notification_type', sa.String(length=100), nullable=False),
     sa.Column('title', sa.String(length=255), nullable=False),
     sa.Column('message', sa.Text(), nullable=False),
@@ -118,7 +119,7 @@ def upgrade():
 
     op.create_table('report_media',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('report_id', sa.Integer(), nullable=False),
+    sa.Column('report_id', sa.Uuid(), nullable=False),
     sa.Column('file_path', sa.String(length=1024), nullable=False),
     sa.Column('media_type', sa.String(length=20), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),

@@ -1,7 +1,7 @@
 """User persistence model."""
 
 from flask_login import UserMixin
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from app.extensions import db
 
@@ -9,10 +9,10 @@ from app.extensions import db
 class User(UserMixin, db.Model):
     __tablename__ = "users"
 
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Uuid(as_uuid=True), primary_key=True, default=uuid4)
     name = db.Column(db.String(150), nullable=False)
     email = db.Column(db.String(255), nullable=False, unique=True, index=True)
-    reference_code = db.Column(db.String(10), nullable=False, unique=True, index=True, default=lambda: uuid4().hex[:10].upper())
+    reference_code = db.Column(db.String(14), nullable=False, unique=True, index=True, default=lambda: f"USR-{uuid4().hex[:10].upper()}")
     password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(20), nullable=False, server_default="user")
     is_active = db.Column(db.Boolean, nullable=False, server_default=db.true())

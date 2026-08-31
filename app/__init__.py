@@ -1,6 +1,7 @@
 """CrimeAlert application factory."""
 
 import click
+from uuid import UUID
 from flask import Flask, render_template
 from werkzeug.security import generate_password_hash
 
@@ -32,9 +33,11 @@ def create_app(config_overrides: dict | None = None) -> Flask:
         """Reject suspended accounts whenever Flask-Login restores a session."""
         from app.models.user import User
 
-        if not user_id.isdigit():
+        try:
+            user_uuid = UUID(user_id)
+        except (TypeError, ValueError):
             return None
-        user = db.session.get(User, int(user_id))
+        user = db.session.get(User, user_uuid)
         return user if user is not None and user.can_authenticate else None
 
     from app.routes.admin import admin_bp

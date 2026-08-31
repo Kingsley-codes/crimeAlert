@@ -17,6 +17,7 @@ EXECUTABLE_EXTENSIONS = {"bat", "cmd", "com", "dll", "exe", "js", "msi", "php", 
 
 class CrimeReportForm(FlaskForm):
     crime_type = SelectField("Crime type", choices=[(value, value.title()) for value in CRIME_TYPES], validators=[DataRequired()])
+    title = StringField("Report title", validators=[DataRequired(), Length(min=5, max=200)])
     description = TextAreaField("What happened?", validators=[DataRequired(), Length(min=10, max=5000)])
     incident_datetime = StringField("Date and time of incident", validators=[DataRequired(), Length(max=32)])
     latitude = StringField("Latitude", validators=[DataRequired(), Length(max=20)])

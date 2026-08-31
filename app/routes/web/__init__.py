@@ -1,6 +1,7 @@
 """Public web and authentication routes."""
 
 from urllib.parse import urljoin, urlparse
+from uuid import UUID
 
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
@@ -80,9 +81,9 @@ def my_reports():  # type: ignore[no-untyped-def]
     return render_template("user/my_reports.html", reports=reports)
 
 
-@web_bp.get("/dashboard/reports/<int:report_id>")
+@web_bp.get("/dashboard/reports/<uuid:report_id>")
 @user_required
-def my_report_detail(report_id: int):  # type: ignore[no-untyped-def]
+def my_report_detail(report_id: UUID):  # type: ignore[no-untyped-def]
     """Return a report only when it belongs to the signed-in user."""
     report = db.session.scalar(
         db.select(CrimeReport).where(CrimeReport.id == report_id, CrimeReport.reporter_id == current_user.id)
@@ -98,9 +99,9 @@ def legacy_my_reports():  # type: ignore[no-untyped-def]
     return redirect(_dashboard_url()) if current_user.role == "admin" else redirect(url_for("web.my_reports"))
 
 
-@web_bp.get("/my-reports/<int:report_id>")
+@web_bp.get("/my-reports/<uuid:report_id>")
 @login_required
-def legacy_my_report_detail(report_id: int):  # type: ignore[no-untyped-def]
+def legacy_my_report_detail(report_id: UUID):  # type: ignore[no-untyped-def]
     if current_user.role == "admin":
         return redirect(url_for("admin.dashboard"))
     return redirect(url_for("web.my_report_detail", report_id=report_id))
@@ -117,6 +118,7 @@ def report_crime():  # type: ignore[no-untyped-def]
                 reporter_id=current_user.id,
                 is_anonymous=bool(form.is_anonymous.data),
                 crime_type=form.crime_type.data,
+                title=form.title.data.strip(),
                 description=form.description.data.strip(),
                 latitude=form.parsed_latitude,
                 longitude=form.parsed_longitude,
@@ -139,10 +141,38 @@ def report_crime():  # type: ignore[no-untyped-def]
     return render_template("user/report_crime.html", form=form)
 
 
-@web_bp.get("/report-crime")
-def legacy_report_crime():  # type: ignore[no-untyped-def]
-    """Keep older public links working while routing reports through the dashboard."""
-    return redirect(url_for("web.report_crime"))
+@web_bp.route("/report-crime", methods=["GET", "POST"])
+def public_report_crime():  # type: ignore[no-untyped-def]
+    """Accept anonymous public reports without requiring an account."""
+    form = CrimeReportForm()
+    if form.validate_on_submit():
+        try:
+            report = CrimeReport(
+                reporter_id=None,
+                is_anonymous=True,
+                crime_type=form.crime_type.data,
+                title=form.title.data.strip(),
+                description=form.description.data.strip(),
+                latitude=form.parsed_latitude,
+                longitude=form.parsed_longitude,
+                incident_datetime=form.parsed_incident_datetime,
+                status="pending",
+            )
+            db.session.add(report)
+            if form.media.data and form.media.data.filename:
+                file_path, media_type = upload_report_media(form.media.data)
+                report.media.append(ReportMedia(file_path=file_path, media_type=media_type))
+            db.session.commit()
+        except (ValueError, SQLAlchemyError):
+            db.session.rollback()
+            flash("We could not submit this report. Please try again.", "error")
+        except Exception:
+            db.session.rollback()
+            flash("Media upload failed. Your report was not submitted.", "error")
+        else:
+            flash("Your anonymous report was submitted for review.", "success")
+            return redirect(url_for("web.home"))
+    return render_template("public/report_crime.html", form=form)
 
 
 def _safe_next_url(target: str | None) -> str | None:
@@ -178,9 +208,9 @@ def login():  # type: ignore[no-untyped-def]
 
     form = LoginForm()
     if form.validate_on_submit():
-        user = authenticate_user(email=form.email.data, password=form.password.data)
+        user = authenticate_user(email=form.email.data, password=form.password.data, required_role="user")
         if user is None:
-            flash("Invalid email, password, or inactive account.", "error")
+            flash("Invalid credentials, inactive account, or incorrect sign-in portal.", "error")
         else:
             login_user(user, remember=form.remember.data)
             flash("Signed in successfully.", "success")
