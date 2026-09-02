@@ -17,7 +17,7 @@
   </head>
   <body class="min-h-screen bg-slate-50 font-sans text-slate-900 antialiased">
     {% set current_endpoint = request.endpoint %}
-    {% set dashboard_active = current_endpoint in ['web.dashboard', 'web.my_reports', 'web.my_report_detail', 'web.report_crime', 'admin.dashboard', 'admin.report_management', 'admin.map_analytics', 'admin.user_management', 'admin.user_report_history'] %}
+    {% set dashboard_active = current_endpoint in ['web.dashboard', 'web.my_reports', 'web.my_report_detail', 'web.report_crime', 'admin.dashboard', 'admin.report_management', 'admin.map_analytics', 'admin.user_management', 'admin.user_report_history', 'admin.settings'] %}
     {% set is_dashboard = dashboard_active %}
     {% if not is_dashboard %}
     <header class="sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur">
@@ -119,6 +119,22 @@
         });
       });
     </script>
+    {% if current_endpoint == 'admin.settings' %}<script>
+      (() => {
+        const states = {{ nigerian_states|default([], true)|tojson }};
+        document.querySelectorAll('input[name="phone"]').forEach((input) => {
+          input.type = 'tel'; input.inputMode = 'numeric'; input.autocomplete = 'tel-national';
+          input.placeholder = '0801 234 5678'; input.maxLength = 13;
+          input.addEventListener('input', () => { const digits = input.value.replace(/\D/g, '').slice(0, 11); input.value = [digits.slice(0, 4), digits.slice(4, 7), digits.slice(7, 11)].filter(Boolean).join(' '); });
+        });
+        document.querySelectorAll('input[name="location"]').forEach((input) => {
+          const select = document.createElement('select'); select.name = input.name; select.required = true; select.className = input.className;
+          const prompt = new Option('Select state or FCT', ''); prompt.disabled = true; select.add(prompt);
+          states.forEach((state) => select.add(new Option(state, state, false, state === input.value)));
+          if (!input.value) prompt.selected = true; input.replaceWith(select);
+        });
+      })();
+    </script>{% endif %}
     {% block inline_scripts %}{% endblock %}
   </body>
 </html>

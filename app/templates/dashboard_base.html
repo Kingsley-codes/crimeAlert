@@ -4,6 +4,7 @@
 {{ super() }}
 <style>
   @media (min-width: 1024px) { #dashboard-shell { display: grid !important; grid-template-columns: var(--dashboard-sidebar-width, 16rem) minmax(0, 1fr) !important; } }
+  @media (max-width: 1023px) { #dashboard-open { top: 1rem; right: auto; bottom: auto; left: 1rem; } }
 </style>
 {% endblock %}
 

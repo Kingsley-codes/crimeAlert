@@ -27,6 +27,13 @@ admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 VALID_STATUSES = {"approved", "rejected"}
 VALID_RISK_LEVELS = {"high", "medium", "low"}
 VALID_USER_STATUSES = {"active", "suspended"}
+NIGERIAN_STATES = (
+    "Abia", "Adamawa", "Akwa Ibom", "Anambra", "Bauchi", "Bayelsa", "Benue", "Borno",
+    "Cross River", "Delta", "Ebonyi", "Edo", "Ekiti", "Enugu", "Federal Capital Territory",
+    "Gombe", "Imo", "Jigawa", "Kaduna", "Kano", "Katsina", "Kebbi", "Kogi", "Kwara",
+    "Lagos", "Nasarawa", "Niger", "Ogun", "Ondo", "Osun", "Oyo", "Plateau", "Rivers",
+    "Sokoto", "Taraba", "Yobe", "Zamfara",
+)
 
 
 def _report_payload(report: CrimeReport) -> dict[str, object]:
@@ -47,6 +54,44 @@ def _parse_filter_date(value: str | None) -> date | None:
         return None
 
 
+def _normalise_nigerian_phone(value: str) -> str:
+    """Validate a Nigerian mobile number and store it in an unambiguous format."""
+    raw_value = value.strip()
+    if not re.fullmatch(r"\+?[0-9\s()\-]+", raw_value):
+        raise ValueError("Enter a Nigerian phone number using digits only.")
+    digits = re.sub(r"\D", "", raw_value)
+    if digits.startswith("234") and len(digits) == 13:
+        local_number = f"0{digits[3:]}"
+    elif len(digits) == 11:
+        local_number = digits
+    else:
+        raise ValueError("Enter an 11-digit Nigerian mobile number, e.g. 0801 234 5678.")
+    if not re.fullmatch(r"0[789][0-9]{9}", local_number):
+        raise ValueError("Enter a valid Nigerian mobile number, e.g. 0801 234 5678.")
+    return f"+234 {local_number[1:4]} {local_number[4:7]} {local_number[7:]}"
+
+
+def _period_bounds(period: str, today: date) -> tuple[date | None, date | None]:
+    """Return inclusive calendar-date boundaries for an admin filter preset."""
+    if period == "today":
+        return today, today
+    if period == "yesterday":
+        yesterday = today - timedelta(days=1)
+        return yesterday, yesterday
+    if period == "this_week":
+        return today - timedelta(days=today.weekday()), today
+    if period == "last_week":
+        this_week_start = today - timedelta(days=today.weekday())
+        return this_week_start - timedelta(days=7), this_week_start - timedelta(days=1)
+    if period == "this_month":
+        return today.replace(day=1), today
+    if period == "last_month":
+        this_month_start = today.replace(day=1)
+        last_month_end = this_month_start - timedelta(days=1)
+        return last_month_end.replace(day=1), last_month_end
+    return None, None
+
+
 def _report_filters():  # type: ignore[no-untyped-def]
     """Apply report-management filters consistently to full and asynchronous table views."""
     status = request.args.get("status", "").strip().lower()
@@ -57,16 +102,11 @@ def _report_filters():  # type: ignore[no-untyped-def]
     today = datetime.now(timezone.utc).date()
     date_from = _parse_filter_date(request.args.get("date_from"))
     date_to = _parse_filter_date(request.args.get("date_to"))
-    if period == "today":
-        date_from = date_to = today
-    elif period == "yesterday":
-        date_from = date_to = today - timedelta(days=1)
-    elif period == "last_7_days":
-        date_from, date_to = today - timedelta(days=6), today
-    elif period == "last_30_days":
-        date_from, date_to = today - timedelta(days=29), today
-    elif period == "this_month":
-        date_from, date_to = today.replace(day=1), today
+    # Keep legacy URLs working while standardising the UI on calendar periods.
+    period = {"last_7_days": "this_week", "last_30_days": "this_month"}.get(period, period)
+    period_from, period_to = _period_bounds(period, today)
+    if period_from:
+        date_from, date_to = period_from, period_to
     elif period != "custom":
         date_from = date_to = None
     statement = db.select(CrimeReport)
@@ -137,18 +177,17 @@ def _set_setting(key: str, value: str) -> None:
 
 def _trend_reports() -> tuple[list[CrimeReport], str, date | None, date | None]:
     """Return the admin-authorized report dataset used by trends and CSV exports."""
-    period = request.args.get("period", "monthly").strip().lower()
+    period = request.args.get("period", "this_month").strip().lower()
     today = datetime.now(timezone.utc).date()
     date_from = _parse_filter_date(request.args.get("date_from"))
     date_to = _parse_filter_date(request.args.get("date_to"))
-    if period == "daily":
-        date_from = date_to = today
-    elif period == "weekly":
-        date_from, date_to = today - timedelta(days=6), today
-    elif period == "monthly":
-        date_from, date_to = today - timedelta(days=29), today
+    # Accept former preset names in saved links, while using clearer calendar periods.
+    period = {"daily": "today", "weekly": "this_week", "monthly": "this_month"}.get(period, period)
+    period_from, period_to = _period_bounds(period, today)
+    if period_from:
+        date_from, date_to = period_from, period_to
     elif period != "custom":
-        period, date_from, date_to = "monthly", today - timedelta(days=29), today
+        period, date_from, date_to = "this_month", today.replace(day=1), today
     statement = db.select(CrimeReport)
     crime_type = request.args.get("crime_type", "").strip().lower()
     risk_level = request.args.get("risk_level", "").strip().lower()
@@ -374,11 +413,15 @@ def settings():  # type: ignore[no-untyped-def]
                 contact = db.session.get(EmergencyContact, contact_id) if contact_id else EmergencyContact()
                 if contact is None:
                     raise ValueError("Emergency contact not found.")
-                contact.name, contact.phone = request.form.get("name", "").strip(), request.form.get("phone", "").strip()
-                contact.description, contact.location = request.form.get("description", "").strip() or None, request.form.get("location", "").strip() or None
+                contact.name = request.form.get("name", "").strip()
+                contact.phone = _normalise_nigerian_phone(request.form.get("phone", ""))
+                contact.description = request.form.get("description", "").strip() or None
+                contact.location = request.form.get("location", "").strip()
                 contact.is_active = bool(request.form.get("is_active"))
-                if not contact.name or not contact.phone:
-                    raise ValueError("Contact name and phone are required.")
+                if not contact.name:
+                    raise ValueError("Contact name is required.")
+                if contact.location not in NIGERIAN_STATES:
+                    raise ValueError("Choose a Nigerian state or the Federal Capital Territory.")
                 db.session.add(contact)
                 db.session.add(AdminLog(admin_id=current_user.id, action=f"settings.emergency_contact_saved:{contact.name}"))
                 flash("Emergency contact saved.", "success")
@@ -399,7 +442,7 @@ def settings():  # type: ignore[no-untyped-def]
             db.session.rollback()
             flash("The settings change could not be saved.", "error")
         return redirect(url_for("admin.settings"))
-    return render_template("admin/settings.html", crime_types=db.session.scalars(db.select(CrimeType).order_by(CrimeType.name)).all(), contacts=db.session.scalars(db.select(EmergencyContact).order_by(EmergencyContact.name)).all(), anonymous_reporting_allowed=_setting("anonymous_reporting_allowed", "true") == "true", low_max=_setting("risk_low_max", "30"), medium_max=_setting("risk_medium_max", "70"))
+    return render_template("admin/settings.html", crime_types=db.session.scalars(db.select(CrimeType).order_by(CrimeType.name)).all(), contacts=db.session.scalars(db.select(EmergencyContact).order_by(EmergencyContact.name)).all(), nigerian_states=NIGERIAN_STATES, anonymous_reporting_allowed=_setting("anonymous_reporting_allowed", "true") == "true", low_max=_setting("risk_low_max", "30"), medium_max=_setting("risk_medium_max", "70"))
 
 
 @admin_bp.get("/users")
