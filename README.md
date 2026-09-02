@@ -57,4 +57,4 @@ upload or commit your local `.env` file.
 
 ## Tests
 
-Run `python -m pytest` to verify the application factory and home page.
+Run `python -m pytest` to verify the application, versioned API validation/pagination, notification ownership, and server-side JWT logout revocation.

@@ -29,6 +29,11 @@ def create_app(config_overrides: dict | None = None) -> Flask:
     # Import models after extensions are ready so Flask-Migrate sees all metadata.
     from app import models  # noqa: F401
 
+    @jwt.token_in_blocklist_loader
+    def revoked_jwt_token(_jwt_header, jwt_payload):  # type: ignore[no-untyped-def]
+        from app.models.revoked_token import RevokedToken
+        return db.session.get(RevokedToken, jwt_payload["jti"]) is not None
+
     @app.context_processor
     def dashboard_notifications():  # type: ignore[no-untyped-def]
         from flask_login import current_user
@@ -56,6 +61,9 @@ def create_app(config_overrides: dict | None = None) -> Flask:
 
     app.register_blueprint(web_bp)
     app.register_blueprint(admin_bp)
+    # Bearer-token clients do not use cookie CSRF. Same-origin session calls are
+    # checked explicitly by the API role decorator.
+    csrf.exempt(api_bp)
     app.register_blueprint(api_bp)
     # Compatibility for the pre-versioned public-map client; new clients use /api/v1.
     app.add_url_rule("/api/public-reports", endpoint="api_legacy_public_reports", view_func=app.view_functions["api.public_reports"], methods=["GET"])

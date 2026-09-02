@@ -15,6 +15,7 @@ from app.models.crime_type import CrimeType
 from app.models.report_media import ReportMedia
 from app.models.system_setting import SystemSetting
 from app.models.emergency_contact import EmergencyContact
+from app.models.notification import Notification
 from app.services.auth_service import authenticate_user, register_user
 from app.services.media_service import upload_report_media
 from app.services.report_service import create_report
@@ -69,6 +70,16 @@ def emergency_contacts():  # type: ignore[no-untyped-def]
     """Show only administrator-maintained active emergency contacts."""
     contacts = db.session.scalars(db.select(EmergencyContact).where(EmergencyContact.is_active.is_(True)).order_by(EmergencyContact.location, EmergencyContact.name)).all()
     return render_template("public/emergency_contacts.html", contacts=contacts)
+
+
+@web_bp.get("/dashboard/notifications")
+@login_required
+def notifications():  # type: ignore[no-untyped-def]
+    """Dedicated notification history required by the mobile-first UI."""
+    notices = db.session.scalars(
+        db.select(Notification).where(Notification.recipient_id == current_user.id).order_by(Notification.created_at.desc())
+    ).all()
+    return render_template("user/notifications.html", notifications=notices)
 
 
 def _dashboard_url() -> str:

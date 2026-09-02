@@ -7,6 +7,7 @@ from app.models.crime_type import CrimeType
 from app.models.admin_log import AdminLog
 from app.models.notification import Notification
 from app.models.user import User
+from app.models.revoked_token import RevokedToken
 from werkzeug.security import generate_password_hash
 
 
@@ -286,3 +287,54 @@ def test_admin_can_suspend_and_reactivate_user_without_removing_reports():
     response = client.post(f"/admin/users/{user_id}/status", json={"action": "reactivate"})
     assert response.status_code == 200
     assert response.json["is_active"] is True
+
+
+def test_versioned_api_filters_paginates_and_keeps_public_reports_private():
+    app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": "sqlite://", "JWT_SECRET_KEY": "test-secret"})
+    with app.app_context():
+        db.create_all()
+        db.session.add(CrimeType(name="theft"))
+        for index in range(3):
+            db.session.add(CrimeReport(crime_type="theft", title=f"Theft report {index}", description="Private detail must never be exposed.", latitude=6.5244, longitude=3.3792, incident_datetime=datetime(2026, 8, 20 + index, 10, 0), status="approved", risk_level="high"))
+        db.session.commit()
+    response = app.test_client().get("/api/v1/reports?crime_type=theft&risk_level=high&page=2&per_page=2")
+    assert response.status_code == 200
+    assert response.json["data"]["pagination"] == {"page": 2, "per_page": 2, "total": 3, "pages": 2}
+    assert len(response.json["data"]["reports"]) == 1
+    assert "description" not in response.json["data"]["reports"][0]
+    assert app.test_client().get("/api/v1/reports?risk_level=invalid").status_code == 400
+
+
+def test_api_logout_revokes_token_server_side():
+    app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": "sqlite://", "JWT_SECRET_KEY": "test-secret"})
+    with app.app_context():
+        db.create_all()
+        user = User(name="Member", email="member@example.com", password_hash=generate_password_hash("password"))
+        db.session.add(user)
+        db.session.commit()
+    client = app.test_client()
+    login = client.post("/api/v1/auth/login", json={"email": "member@example.com", "password": "password"})
+    token = login.json["data"]["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    assert client.get("/api/v1/me/reports", headers=headers).status_code == 200
+    assert client.post("/api/v1/auth/logout", headers=headers).status_code == 200
+    with app.app_context():
+        assert db.session.scalar(db.select(RevokedToken)) is not None
+    assert client.get("/api/v1/me/reports", headers=headers).status_code == 401
+
+
+def test_notifications_api_marks_only_the_recipient_notification_read():
+    app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": "sqlite://", "JWT_SECRET_KEY": "test-secret"})
+    with app.app_context():
+        db.create_all()
+        user = User(name="Member", email="member@example.com", password_hash=generate_password_hash("password"))
+        other = User(name="Other", email="other@example.com", password_hash="hash")
+        db.session.add_all([user, other]); db.session.flush()
+        notification = Notification(recipient_id=user.id, notification_type="report_approved", title="Approved", message="Your report was approved.")
+        foreign = Notification(recipient_id=other.id, notification_type="report_approved", title="Approved", message="Other user's update.")
+        db.session.add_all([notification, foreign]); db.session.commit(); notification_id, foreign_id = notification.id, foreign.id
+    client = app.test_client(); token = client.post("/api/v1/auth/login", json={"email": "member@example.com", "password": "password"}).json["data"]["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    assert len(client.get("/api/v1/notifications", headers=headers).json["data"]["notifications"]) == 1
+    assert client.post(f"/api/v1/notifications/{foreign_id}/read", headers=headers).status_code == 404
+    assert client.post(f"/api/v1/notifications/{notification_id}/read", headers=headers).json["data"]["notification"]["is_read"] is True
