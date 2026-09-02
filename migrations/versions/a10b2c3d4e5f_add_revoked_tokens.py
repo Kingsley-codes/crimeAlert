@@ -1,7 +1,7 @@
 """add persisted JWT token revocations
 
 Revision ID: a10b2c3d4e5f
-Revises: f91a2b3c4d5e
+Revises: a92e7d1f4b3c
 Create Date: 2026-09-03
 """
 
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 revision = "a10b2c3d4e5f"
-down_revision = "f91a2b3c4d5e"
+down_revision = "a92e7d1f4b3c"
 branch_labels = None
 depends_on = None
 
