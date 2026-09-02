@@ -20,6 +20,7 @@ from app.models.notification import Notification
 from app.models.system_setting import SystemSetting
 from app.models.user import User
 from app.services.auth_service import authenticate_user
+from app.services.report_service import change_report
 from app.utils.decorators import admin_required
 
 
@@ -523,36 +524,13 @@ def update_report(report_id: UUID):  # type: ignore[no-untyped-def]
         return _json_error("Report not found.", 404)
 
     try:
-        if action in {"approve", "reject"}:
-            new_status = "approved" if action == "approve" else "rejected"
-            if report.status == new_status:
-                return _json_error(f"Report is already {new_status}.")
-            report.status = new_status
-            db.session.add(AdminLog(admin_id=current_user.id, action=f"report.{new_status}", target_report_id=report.id))
-            _notify_reporter(report, new_status)
-            message = f"Report {new_status}."
-        elif action == "risk_level":
-            risk_level = str(payload.get("risk_level", "")).strip().lower()
-            if risk_level not in VALID_RISK_LEVELS:
-                return _json_error("Risk level must be high, medium, or low.")
-            if report.risk_level == risk_level:
-                return _json_error("Report already has that risk level.")
-            report.risk_level = risk_level
-            db.session.add(AdminLog(admin_id=current_user.id, action=f"report.risk_level_changed:{risk_level}", target_report_id=report.id))
-            message = "Risk level updated."
-        elif action == "classification":
-            crime_type = str(payload.get("crime_type", "")).strip().lower()
-            is_valid_type = db.session.scalar(db.select(CrimeType.id).where(CrimeType.name == crime_type, CrimeType.is_active.is_(True)))
-            if is_valid_type is None:
-                return _json_error("Choose an active crime type.")
-            if report.crime_type == crime_type:
-                return _json_error("Report already has that crime type.")
-            report.crime_type = crime_type
-            db.session.add(AdminLog(admin_id=current_user.id, action=f"report.classification_changed:{crime_type}", target_report_id=report.id))
-            message = "Classification updated."
-        else:
-            return _json_error("Unsupported administrative action.")
+        value = str(payload.get("risk_level" if action == "risk_level" else "crime_type", "")).strip().lower()
+        change_report(report, action, current_user.id, value if action in {"risk_level", "classification"} else None)
         db.session.commit()
+        message = "Report status updated." if action in {"approve", "reject"} else "Report updated."
+    except ValueError as error:
+        db.session.rollback()
+        return _json_error(str(error))
     except Exception:
         db.session.rollback()
         return _json_error("The report could not be updated.", 500)

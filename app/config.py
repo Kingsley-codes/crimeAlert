@@ -12,6 +12,7 @@ class Config:
     """Base configuration. Secrets and connection details are never hardcoded."""
 
     SECRET_KEY = os.getenv("SECRET_KEY") or os.getenv("DATABASE_SECRET_KEY")
+    JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY") or SECRET_KEY
     SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     WTF_CSRF_TIME_LIMIT = 3600

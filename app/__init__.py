@@ -6,7 +6,7 @@ from flask import Flask, render_template
 from werkzeug.security import generate_password_hash
 
 from app.config import Config
-from app.extensions import csrf, db, login_manager, migrate
+from app.extensions import csrf, db, jwt, login_manager, migrate
 
 
 def create_app(config_overrides: dict | None = None) -> Flask:
@@ -21,12 +21,22 @@ def create_app(config_overrides: dict | None = None) -> Flask:
     migrate.init_app(app, db)
     login_manager.init_app(app)
     csrf.init_app(app)
+    jwt.init_app(app)
     login_manager.login_view = "web.login"
     login_manager.login_message = "Please sign in to continue."
     login_manager.login_message_category = "warning"
 
     # Import models after extensions are ready so Flask-Migrate sees all metadata.
     from app import models  # noqa: F401
+
+    @app.context_processor
+    def dashboard_notifications():  # type: ignore[no-untyped-def]
+        from flask_login import current_user
+        from app.models.notification import Notification
+        if not current_user.is_authenticated:
+            return {"nav_notifications": [], "unread_notification_count": 0}
+        notices = db.session.scalars(db.select(Notification).where(Notification.recipient_id == current_user.id).order_by(Notification.created_at.desc()).limit(8)).all()
+        return {"nav_notifications": notices, "unread_notification_count": sum(notice.is_read is False for notice in notices)}
 
     @login_manager.user_loader
     def load_user(user_id: str):  # type: ignore[no-untyped-def]
@@ -47,6 +57,8 @@ def create_app(config_overrides: dict | None = None) -> Flask:
     app.register_blueprint(web_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(api_bp)
+    # Compatibility for the pre-versioned public-map client; new clients use /api/v1.
+    app.add_url_rule("/api/public-reports", endpoint="api_legacy_public_reports", view_func=app.view_functions["api.public_reports"], methods=["GET"])
 
     @app.cli.command("create-admin")
     @click.option("--name", prompt="Administrator name", help="Display name for the administrator.")

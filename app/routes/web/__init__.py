@@ -14,8 +14,10 @@ from app.models.crime_report import CrimeReport
 from app.models.crime_type import CrimeType
 from app.models.report_media import ReportMedia
 from app.models.system_setting import SystemSetting
+from app.models.emergency_contact import EmergencyContact
 from app.services.auth_service import authenticate_user, register_user
 from app.services.media_service import upload_report_media
+from app.services.report_service import create_report
 from app.utils.decorators import user_required
 
 
@@ -60,6 +62,13 @@ def how_it_works():  # type: ignore[no-untyped-def]
 @web_bp.get("/safety-guidance")
 def safety_guidance():  # type: ignore[no-untyped-def]
     return render_template("public/safety_guidance.html")
+
+
+@web_bp.get("/emergency-contacts")
+def emergency_contacts():  # type: ignore[no-untyped-def]
+    """Show only administrator-maintained active emergency contacts."""
+    contacts = db.session.scalars(db.select(EmergencyContact).where(EmergencyContact.is_active.is_(True)).order_by(EmergencyContact.location, EmergencyContact.name)).all()
+    return render_template("public/emergency_contacts.html", contacts=contacts)
 
 
 def _dashboard_url() -> str:
@@ -130,19 +139,7 @@ def report_crime():  # type: ignore[no-untyped-def]
     form = _report_form()
     if form.validate_on_submit():
         try:
-            report = CrimeReport(
-                # The owner is always retained privately; anonymity controls public identity disclosure.
-                reporter_id=current_user.id,
-                is_anonymous=bool(form.is_anonymous.data),
-                crime_type=form.crime_type.data,
-                title=form.title.data.strip(),
-                description=form.description.data.strip(),
-                latitude=form.parsed_latitude,
-                longitude=form.parsed_longitude,
-                incident_datetime=form.parsed_incident_datetime,
-                status="pending",
-            )
-            db.session.add(report)
+            report = create_report({"crime_type": form.crime_type.data, "title": form.title.data, "description": form.description.data, "latitude": str(form.parsed_latitude), "longitude": str(form.parsed_longitude), "incident_datetime": form.parsed_incident_datetime.isoformat(), "is_anonymous": bool(form.is_anonymous.data)}, current_user.id)
             if form.media.data and form.media.data.filename:
                 file_path, media_type = upload_report_media(form.media.data)
                 report.media.append(ReportMedia(file_path=file_path, media_type=media_type))
@@ -167,18 +164,7 @@ def public_report_crime():  # type: ignore[no-untyped-def]
     form = _report_form()
     if form.validate_on_submit():
         try:
-            report = CrimeReport(
-                reporter_id=None,
-                is_anonymous=True,
-                crime_type=form.crime_type.data,
-                title=form.title.data.strip(),
-                description=form.description.data.strip(),
-                latitude=form.parsed_latitude,
-                longitude=form.parsed_longitude,
-                incident_datetime=form.parsed_incident_datetime,
-                status="pending",
-            )
-            db.session.add(report)
+            report = create_report({"crime_type": form.crime_type.data, "title": form.title.data, "description": form.description.data, "latitude": str(form.parsed_latitude), "longitude": str(form.parsed_longitude), "incident_datetime": form.parsed_incident_datetime.isoformat(), "is_anonymous": True})
             if form.media.data and form.media.data.filename:
                 file_path, media_type = upload_report_media(form.media.data)
                 report.media.append(ReportMedia(file_path=file_path, media_type=media_type))
