@@ -158,6 +158,8 @@ def _hotspots(reports: list[CrimeReport]) -> list[dict[str, object]]:
         {
             "zone": f"Grid {latitude * cell_size:.2f}°, {longitude * cell_size:.2f}°",
             "count": count,
+            "latitude": (latitude + 0.5) * cell_size,
+            "longitude": (longitude + 0.5) * cell_size,
         }
         for (latitude, longitude), count in sorted(cells.items(), key=lambda item: (-item[1], item[0]))[:5]
     ]
