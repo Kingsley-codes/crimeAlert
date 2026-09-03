@@ -17,7 +17,7 @@
   </head>
   <body class="min-h-screen bg-slate-50 font-sans text-slate-900 antialiased">
     {% set current_endpoint = request.endpoint %}
-    {% set dashboard_active = current_endpoint in ['web.dashboard', 'web.my_reports', 'web.my_report_detail', 'web.report_crime', 'admin.dashboard', 'admin.report_management', 'admin.map_analytics', 'admin.user_management', 'admin.user_report_history', 'admin.settings'] %}
+    {% set dashboard_active = current_endpoint in ['web.dashboard', 'web.my_reports', 'web.my_report_detail', 'web.report_crime', 'web.notifications', 'admin.dashboard', 'admin.report_management', 'admin.map_analytics', 'admin.user_management', 'admin.user_report_history', 'admin.settings'] %}
     {% set is_dashboard = dashboard_active %}
     {% if not is_dashboard %}
     <header class="sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur">
@@ -118,6 +118,15 @@
           if (button) { button.disabled = true; button.value = button.dataset.loadingText || 'Submitting…'; }
         });
       });
+      document.querySelectorAll('form').forEach((form) => form.addEventListener('submit', (event) => {
+        if (event.defaultPrevented || form.dataset.submitting === 'true') { event.preventDefault(); return; }
+        form.dataset.submitting = 'true';
+        form.querySelectorAll('button[type="submit"], input[type="submit"], button:not([type])').forEach((button) => {
+          button.disabled = true; button.setAttribute('aria-busy', 'true');
+          if (button.tagName === 'BUTTON' && button.dataset.loadingText) button.textContent = button.dataset.loadingText;
+          if (button.tagName === 'INPUT') button.value = button.dataset.loadingText || 'Submitting…';
+        });
+      }));
     </script>
     {% if current_endpoint == 'admin.settings' %}<script>
       (() => {

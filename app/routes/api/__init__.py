@@ -17,6 +17,7 @@ from app.models.revoked_token import RevokedToken
 from app.models.user import User
 from app.services.auth_service import authenticate_user
 from app.services.report_service import change_report, create_report
+from app.services.notification_service import purge_expired_read_notifications
 
 api_bp = Blueprint("api", __name__, url_prefix="/api/v1")
 MAX_PAGE_SIZE = 100
@@ -137,6 +138,7 @@ def mine_one(user, report_id):
 @api_bp.get("/notifications")
 @api_role()
 def notifications(user):
+    if purge_expired_read_notifications(): db.session.commit()
     statement = db.select(Notification).where(Notification.recipient_id == user.id)
     if request.args.get("unread", "").lower() in {"1", "true"}: statement = statement.where(Notification.is_read.is_(False))
     notices = db.session.scalars(statement.order_by(Notification.created_at.desc())).all()
@@ -148,6 +150,14 @@ def read_notification(user, notification_id):
     notice = db.session.scalar(db.select(Notification).where(Notification.id == notification_id, Notification.recipient_id == user.id))
     if not notice: return fail("Notification not found.", 404)
     notice.is_read = True; db.session.commit(); return ok({"notification": {"id": notice.id, "is_read": True}})
+
+@api_bp.delete("/notifications/<int:notification_id>")
+@api_role()
+def delete_notification(user, notification_id):
+    notice = db.session.scalar(db.select(Notification).where(Notification.id == notification_id, Notification.recipient_id == user.id))
+    if not notice: return fail("Notification not found.", 404)
+    db.session.delete(notice); db.session.commit()
+    return ok({"deleted": notification_id})
 
 def _admin_reports():
     statement = _filters(db.select(CrimeReport)); status = request.args.get("status", "").strip().lower()

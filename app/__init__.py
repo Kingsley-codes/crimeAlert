@@ -40,6 +40,9 @@ def create_app(config_overrides: dict | None = None) -> Flask:
         from app.models.notification import Notification
         if not current_user.is_authenticated:
             return {"nav_notifications": [], "unread_notification_count": 0}
+        from app.services.notification_service import purge_expired_read_notifications
+        if purge_expired_read_notifications():
+            db.session.commit()
         notices = db.session.scalars(db.select(Notification).where(Notification.recipient_id == current_user.id).order_by(Notification.created_at.desc()).limit(8)).all()
         return {"nav_notifications": notices, "unread_notification_count": sum(notice.is_read is False for notice in notices)}
 
