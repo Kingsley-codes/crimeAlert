@@ -27,6 +27,21 @@
   fetch('/api/v1/admin/map-analytics', { headers: { Accept: 'application/json' } }).then(response => { if (!response.ok) throw new Error(); return response.json(); }).then(response => { const data = response.data; const bounds = []; data.reports.forEach(report => { const point = [report.latitude, report.longitude], [colour, opacity] = statusStyle[report.status] || statusStyle.pending; bounds.push(point); L.circleMarker(point, { radius: 8, color: colour, weight: 2, fillColor: colour, fillOpacity: opacity, opacity }).bindPopup(popup(report)).addTo(markers); }); count.textContent = data.reports.length + (data.reports.length === 1 ? ' report' : ' reports'); if (bounds.length) map.fitBounds(bounds, { padding: [40, 40], maxZoom: 13 }); list.replaceChildren(...data.hotspots.map((hotspot, index) => { const item = document.createElement('li'); item.className = 'flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-3'; item.innerHTML = '<span class="min-w-0"><span class="block text-xs font-bold text-slate-400">#' + (index + 1) + '</span><span class="block truncate text-sm font-semibold text-ink"></span></span><strong class="rounded-full bg-brand-100 px-2.5 py-1 text-xs text-brand-700"></strong>'; item.querySelector('.text-ink').textContent = hotspot.zone; item.querySelector('strong').textContent = hotspot.count + ' reports'; return item; })); if (!data.hotspots.length) list.innerHTML = '<li class="text-sm text-slate-500">No mapped reports yet.</li>'; }).catch(showError);
 </script>
 <script>
-  fetch('/api/v1/admin/map-analytics', { headers: { Accept: 'application/json' } }).then(response => response.ok ? response.json() : Promise.reject()).then(response => { const groups = new Map(); response.data.reports.forEach(report => { const lat = Math.floor(report.latitude / .05) * .05, lng = Math.floor(report.longitude / .05) * .05, key = lat.toFixed(2) + ',' + lng.toFixed(2), group = groups.get(key) || { lat: lat + .025, lng: lng + .025, reports: [] }; group.reports.push(report); groups.set(key, group); }); const hotspots = [...groups.values()].sort((a,b) => b.reports.length - a.reports.length).slice(0,5); list.replaceChildren(...hotspots.map((hotspot,index) => { const item=document.createElement('li'), button=document.createElement('button'), types=[...new Set(hotspot.reports.map(report => report.crime_type))]; button.type='button';button.className='w-full rounded-xl bg-slate-50 px-3 py-3 text-left hover:bg-brand-50';button.innerHTML='<span class="block text-xs font-bold text-slate-400">#'+(index+1)+'</span><span class="block text-sm font-semibold text-ink"></span><span class="mt-1 block text-xs text-slate-600"></span>';button.querySelector('.text-ink').textContent=hotspot.reports.length+' reports';button.querySelector('.text-slate-600').textContent=types.join(', ');button.addEventListener('click',()=>{map.setView([hotspot.lat,hotspot.lng],13);L.popup().setLatLng([hotspot.lat,hotspot.lng]).setContent('<strong>'+hotspot.reports.length+' reports in this area</strong><br>'+types.join(', ')).openOn(map)});item.append(button);return item })); });
+  const activateHotspot = (item) => {
+    const coordinates = item.querySelector('.text-ink')?.textContent.match(/-?\d+(?:\.\d+)?/g);
+    if (!coordinates || coordinates.length < 2) return;
+    const [latitude, longitude] = coordinates.map(Number), reports = item.querySelector('strong')?.textContent || 'Reports';
+    map.setView([latitude + .025, longitude + .025], 13);
+    L.popup().setLatLng([latitude + .025, longitude + .025]).setContent('<strong>' + reports + ' in this area</strong>').openOn(map);
+  };
+  const prepareHotspots = () => [...list.querySelectorAll('li')].forEach(item => {
+    if (item.dataset.interactive) return;
+    item.dataset.interactive = 'true'; item.tabIndex = 0; item.setAttribute('role', 'button');
+    item.classList.add('cursor-pointer', 'hover:bg-brand-50', 'focus:outline-none', 'focus:ring-2', 'focus:ring-brand-500');
+    item.addEventListener('click', () => activateHotspot(item));
+    item.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); activateHotspot(item); } });
+  });
+  new MutationObserver(prepareHotspots).observe(list, { childList: true });
+  prepareHotspots();
 </script>
 {% endblock %}
