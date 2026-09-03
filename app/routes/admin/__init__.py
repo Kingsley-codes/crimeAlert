@@ -99,7 +99,7 @@ def _report_filters():  # type: ignore[no-untyped-def]
     crime_type = request.args.get("crime_type", "").strip().lower()
     risk_level = request.args.get("risk_level", "").strip().lower()
     search = request.args.get("search", "").strip()
-    period = request.args.get("period", "").strip().lower()
+    period = request.args.get("period", "today").strip().lower()
     today = datetime.now(timezone.utc).date()
     date_from = _parse_filter_date(request.args.get("date_from"))
     date_to = _parse_filter_date(request.args.get("date_to"))
