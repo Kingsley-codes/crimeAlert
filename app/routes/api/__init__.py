@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from functools import wraps
 from uuid import UUID
 
-from flask import Blueprint, jsonify, render_template, request
+from flask import Blueprint, current_app, jsonify, render_template, request
 from flask_login import current_user
 from flask_jwt_extended import create_access_token, get_jwt, get_jwt_identity, jwt_required
 from flask_wtf.csrf import ValidationError, validate_csrf
@@ -18,6 +18,7 @@ from app.models.user import User
 from app.services.auth_service import authenticate_user
 from app.services.report_service import change_report, create_report
 from app.services.notification_service import purge_expired_read_notifications
+from app.security import rate_limiter
 
 api_bp = Blueprint("api", __name__, url_prefix="/api/v1")
 MAX_PAGE_SIZE = 100
@@ -87,6 +88,7 @@ def serialize(report, public=False, detail=False):
 def login():
     try: payload = json_body()
     except ValueError as exc: return fail(str(exc))
+    if not rate_limiter.allow("api-login", current_app.config["RATE_LIMIT_LOGIN"]): return fail("Too many requests. Please try again later.", 429)
     user = authenticate_user(email=str(payload.get("email", "")), password=str(payload.get("password", "")))
     if not user: return fail("Invalid credentials or inactive account.", 401)
     return ok({"access_token": create_access_token(identity=str(user.id), additional_claims={"role": user.role}), "user": {"id": str(user.id), "name": user.name, "role": user.role}})
@@ -104,6 +106,7 @@ def submit():
     try:
         payload = json_body()
         if request.headers.get("Authorization"): return fail("Use the authenticated /me endpoint with a valid token; public reports are anonymous.", 401)
+        if not rate_limiter.allow("api-public-report", current_app.config["RATE_LIMIT_PUBLIC_REPORT"]): return fail("Too many requests. Please try again later.", 429)
         report = create_report(payload); db.session.commit(); return ok({"report": serialize(report)}, 201)
     except ValueError as exc: db.session.rollback(); return fail(str(exc))
 

@@ -40,7 +40,7 @@
 
 {% block inline_scripts %}
 {{ super() }}
-<script>
+<script nonce="{{ csp_nonce }}">
   (() => {
     const sidebar = document.getElementById('dashboard-sidebar'), overlay = document.getElementById('dashboard-sidebar-overlay'), open = document.getElementById('dashboard-open'), close = document.getElementById('dashboard-close'), collapse = document.getElementById('dashboard-collapse'), shell = document.getElementById('dashboard-shell');
     const setMobileMenu = (isOpen) => { sidebar.classList.toggle('-translate-x-full', !isOpen); overlay.classList.toggle('hidden', !isOpen); open?.setAttribute('aria-expanded', String(isOpen)); };

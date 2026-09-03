@@ -3,7 +3,7 @@
 from urllib.parse import urljoin, urlparse
 from uuid import UUID
 
-from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
+from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, session, url_for
 from flask_login import current_user, login_required, login_user, logout_user
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -20,6 +20,7 @@ from app.services.auth_service import authenticate_user, register_user
 from app.services.media_service import upload_report_media
 from app.services.report_service import create_report
 from app.utils.decorators import user_required
+from app.security import rate_limiter
 
 
 web_bp = Blueprint("web", __name__)
@@ -174,6 +175,8 @@ def public_report_crime():  # type: ignore[no-untyped-def]
         return redirect(url_for("web.login"))
     form = _report_form()
     if form.validate_on_submit():
+        if not rate_limiter.allow("public-report", current_app.config["RATE_LIMIT_PUBLIC_REPORT"]):
+            abort(429)
         try:
             report = create_report({"crime_type": form.crime_type.data, "title": form.title.data, "description": form.description.data, "latitude": str(form.parsed_latitude), "longitude": str(form.parsed_longitude), "incident_datetime": form.parsed_incident_datetime.isoformat(), "is_anonymous": True})
             if form.media.data and form.media.data.filename:
@@ -207,11 +210,15 @@ def register():  # type: ignore[no-untyped-def]
 
     form = RegistrationForm()
     if form.validate_on_submit():
+        if not rate_limiter.allow("registration", current_app.config["RATE_LIMIT_LOGIN"]):
+            abort(429)
         try:
             user = register_user(name=form.name.data, email=form.email.data, password=form.password.data)
         except ValueError as error:
             flash(str(error), "error")
         else:
+            session.clear()
+            session.permanent = True
             login_user(user)
             flash("Your account has been created.", "success")
             return redirect(url_for("web.dashboard"))
@@ -225,10 +232,14 @@ def login():  # type: ignore[no-untyped-def]
 
     form = LoginForm()
     if form.validate_on_submit():
+        if not rate_limiter.allow("user-login", current_app.config["RATE_LIMIT_LOGIN"]):
+            abort(429)
         user = authenticate_user(email=form.email.data, password=form.password.data, required_role="user")
         if user is None:
             flash("Invalid credentials, inactive account, or incorrect sign-in portal.", "error")
         else:
+            session.clear()
+            session.permanent = True
             login_user(user, remember=form.remember.data)
             flash("Signed in successfully.", "success")
             next_url = _safe_next_url(request.args.get("next"))
@@ -242,5 +253,6 @@ def login():  # type: ignore[no-untyped-def]
 @login_required
 def logout():  # type: ignore[no-untyped-def]
     logout_user()
+    session.clear()
     flash("You have been signed out.", "success")
     return redirect(url_for("web.home"))

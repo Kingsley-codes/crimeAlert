@@ -8,8 +8,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
+    <script nonce="{{ csp_nonce }}" src="https://cdn.tailwindcss.com"></script>
+    <script nonce="{{ csp_nonce }}">
       tailwind.config = { theme: { extend: { colors: { ink: '#10233f', brand: { 50: '#eef7ff', 100: '#d9edff', 500: '#1677c8', 600: '#0e65ae', 700: '#0b528e' } }, fontFamily: { sans: ['DM Sans', 'sans-serif'], display: ['Manrope', 'sans-serif'] }, boxShadow: { soft: '0 18px 50px rgba(16, 35, 63, .10)' } } } }
     </script>
     <style>.leaflet-container img { max-width: none !important; max-height: none !important; }</style>
@@ -77,7 +77,7 @@
         <div class="flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold text-slate-600"><a href="{{ url_for('web.about') }}" class="hover:text-brand-700">About</a><a href="{{ url_for('web.how_it_works') }}" class="hover:text-brand-700">How it works</a><a href="{{ url_for('web.safety_guidance') }}" class="hover:text-brand-700">Safety guidance</a></div>
       </div>
     </footer>{% endblock %}{% endif %}
-    <script>
+    <script nonce="{{ csp_nonce }}">
       const menuButton = document.getElementById('mobile-menu-button');
       const mobileMenu = document.getElementById('mobile-menu');
       menuButton?.addEventListener('click', () => { const isOpen = mobileMenu.hidden; mobileMenu.hidden = !isOpen; menuButton.setAttribute('aria-expanded', String(isOpen)); });
@@ -128,7 +128,7 @@
         });
       }));
     </script>
-    {% if current_endpoint == 'admin.settings' %}<script>
+    {% if current_endpoint == 'admin.settings' %}<script nonce="{{ csp_nonce }}">
       (() => {
         const states = {{ nigerian_states|default([], true)|tojson }};
         document.querySelectorAll('input[name="phone"]').forEach((input) => {

@@ -17,7 +17,8 @@ def create_report(data: dict, reporter_id=None) -> CrimeReport:
     try: latitude, longitude = Decimal(str(data["latitude"])), Decimal(str(data["longitude"])); incident = datetime.fromisoformat(data["incident_datetime"].replace("Z", "+00:00"))
     except (InvalidOperation, ValueError): raise ValueError("Use valid ISO 8601 incident_datetime and numeric coordinates.")
     if not -90 <= latitude <= 90 or not -180 <= longitude <= 180: raise ValueError("Coordinates are out of range.")
-    anonymous = bool(data.get("is_anonymous", reporter_id is None))
+    # A public submission never gains an identity merely by sending a JSON flag.
+    anonymous = reporter_id is None or bool(data.get("is_anonymous", False))
     report = CrimeReport(reporter_id=reporter_id, is_anonymous=anonymous, crime_type=crime_type, title=title, description=description, latitude=latitude, longitude=longitude, incident_datetime=incident if incident.tzinfo else incident.replace(tzinfo=timezone.utc), status="pending")
     db.session.add(report); db.session.flush(); notify_admins_of_report(report); return report
 

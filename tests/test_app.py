@@ -291,7 +291,7 @@ def test_admin_can_suspend_and_reactivate_user_without_removing_reports():
 
 
 def test_versioned_api_filters_paginates_and_keeps_public_reports_private():
-    app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": "sqlite://", "JWT_SECRET_KEY": "test-secret"})
+    app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": "sqlite://", "JWT_SECRET_KEY": "test-secret-that-is-at-least-32-bytes"})
     with app.app_context():
         db.create_all()
         db.session.add(CrimeType(name="theft"))
@@ -307,7 +307,7 @@ def test_versioned_api_filters_paginates_and_keeps_public_reports_private():
 
 
 def test_api_logout_revokes_token_server_side():
-    app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": "sqlite://", "JWT_SECRET_KEY": "test-secret"})
+    app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": "sqlite://", "JWT_SECRET_KEY": "test-secret-that-is-at-least-32-bytes"})
     with app.app_context():
         db.create_all()
         user = User(name="Member", email="member@example.com", password_hash=generate_password_hash("password"))
@@ -325,7 +325,7 @@ def test_api_logout_revokes_token_server_side():
 
 
 def test_notifications_api_marks_only_the_recipient_notification_read():
-    app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": "sqlite://", "JWT_SECRET_KEY": "test-secret"})
+    app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": "sqlite://", "JWT_SECRET_KEY": "test-secret-that-is-at-least-32-bytes"})
     with app.app_context():
         db.create_all()
         user = User(name="Member", email="member@example.com", password_hash=generate_password_hash("password"))

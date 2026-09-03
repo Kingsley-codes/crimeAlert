@@ -1,8 +1,9 @@
 """CrimeAlert application factory."""
 
-import click
+import secrets
 from uuid import UUID
-from flask import Flask, render_template
+import click
+from flask import Flask, g, jsonify, render_template, request
 from werkzeug.security import generate_password_hash
 
 from app.config import Config
@@ -16,6 +17,16 @@ def create_app(config_overrides: dict | None = None) -> Flask:
 
     if config_overrides:
         app.config.update(config_overrides)
+
+    if not app.config.get("TESTING"):
+        for key in ("SECRET_KEY", "JWT_SECRET_KEY", "SQLALCHEMY_DATABASE_URI"):
+            value = app.config.get(key)
+            if not value or str(value).startswith("replace-with-"):
+                raise RuntimeError(f"{key} must be configured securely before the application starts.")
+            if key != "SQLALCHEMY_DATABASE_URI" and len(str(value)) < 32:
+                raise RuntimeError(f"{key} must be at least 32 characters long.")
+        if app.config["SECRET_KEY"] == app.config["JWT_SECRET_KEY"]:
+            raise RuntimeError("SECRET_KEY and JWT_SECRET_KEY must be different values.")
 
     db.init_app(app)
     migrate.init_app(app, db)
@@ -33,6 +44,22 @@ def create_app(config_overrides: dict | None = None) -> Flask:
     def revoked_jwt_token(_jwt_header, jwt_payload):  # type: ignore[no-untyped-def]
         from app.models.revoked_token import RevokedToken
         return db.session.get(RevokedToken, jwt_payload["jti"]) is not None
+
+    @jwt.unauthorized_loader
+    def missing_jwt(reason: str):  # type: ignore[no-untyped-def]
+        return jsonify({"ok": False, "error": {"message": "Authentication is required."}}), 401
+
+    @jwt.invalid_token_loader
+    def invalid_jwt(reason: str):  # type: ignore[no-untyped-def]
+        return jsonify({"ok": False, "error": {"message": "Invalid authentication token."}}), 401
+
+    @jwt.expired_token_loader
+    def expired_jwt(_header, _payload):  # type: ignore[no-untyped-def]
+        return jsonify({"ok": False, "error": {"message": "Authentication token has expired."}}), 401
+
+    @jwt.revoked_token_loader
+    def revoked_jwt(_header, _payload):  # type: ignore[no-untyped-def]
+        return jsonify({"ok": False, "error": {"message": "Authentication token has been revoked."}}), 401
 
     @app.context_processor
     def dashboard_notifications():  # type: ignore[no-untyped-def]
@@ -71,6 +98,27 @@ def create_app(config_overrides: dict | None = None) -> Flask:
     # Compatibility for the pre-versioned public-map client; new clients use /api/v1.
     app.add_url_rule("/api/public-reports", endpoint="api_legacy_public_reports", view_func=app.view_functions["api.public_reports"], methods=["GET"])
 
+    @app.before_request
+    def assign_request_nonce():  # type: ignore[no-untyped-def]
+        g.csp_nonce = secrets.token_urlsafe(16)
+
+    @app.context_processor
+    def security_context():  # type: ignore[no-untyped-def]
+        return {"csp_nonce": getattr(g, "csp_nonce", "")}
+
+    @app.after_request
+    def apply_security_headers(response):  # type: ignore[no-untyped-def]
+        nonce = getattr(g, "csp_nonce", "")
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault("Permissions-Policy", "geolocation=(self), camera=(), microphone=()")
+        response.headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
+        response.headers.setdefault("Content-Security-Policy", f"default-src 'self'; script-src 'self' 'nonce-{nonce}' https://unpkg.com https://cdn.tailwindcss.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https://*.tile.openstreetmap.org; font-src 'self' data:; connect-src 'self' https://*.tile.openstreetmap.org; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'")
+        if request.is_secure:
+            response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+        return response
+
     @app.cli.command("create-admin")
     @click.option("--name", prompt="Administrator name", help="Display name for the administrator.")
     @click.option("--email", prompt="Administrator email", help="Unique administrator email address.")
@@ -98,3 +146,35 @@ def register_error_handlers(app: Flask) -> None:
     @app.errorhandler(404)
     def not_found(error):  # type: ignore[no-untyped-def]
         return render_template("errors/404.html"), 404
+
+    @app.errorhandler(400)
+    def bad_request(error):  # type: ignore[no-untyped-def]
+        if request.path.startswith("/api/"):
+            return jsonify({"ok": False, "error": {"message": "Invalid request."}}), 400
+        return render_template("errors/404.html"), 400
+
+    @app.errorhandler(403)
+    def forbidden(error):  # type: ignore[no-untyped-def]
+        if request.path.startswith("/api/"):
+            return jsonify({"ok": False, "error": {"message": "Access denied."}}), 403
+        return render_template("errors/404.html"), 403
+
+    @app.errorhandler(413)
+    def request_too_large(error):  # type: ignore[no-untyped-def]
+        if request.path.startswith("/api/"):
+            return jsonify({"ok": False, "error": {"message": "Request is too large."}}), 413
+        return "Request is too large.", 413
+
+    @app.errorhandler(429)
+    def rate_limited(error):  # type: ignore[no-untyped-def]
+        message = "Too many requests. Please try again later."
+        if request.path.startswith("/api/"):
+            return jsonify({"ok": False, "error": {"message": message}}), 429
+        return message, 429
+
+    @app.errorhandler(500)
+    def internal_error(error):  # type: ignore[no-untyped-def]
+        app.logger.exception("Unhandled request error")
+        if request.path.startswith("/api/"):
+            return jsonify({"ok": False, "error": {"message": "An internal error occurred."}}), 500
+        return "An internal error occurred.", 500

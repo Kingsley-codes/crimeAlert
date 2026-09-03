@@ -6,7 +6,7 @@ from io import StringIO
 import re
 from uuid import UUID
 
-from flask import Blueprint, Response, flash, jsonify, redirect, render_template, request, url_for
+from flask import Blueprint, Response, abort, current_app, flash, jsonify, redirect, render_template, request, session, url_for
 from flask_login import current_user, login_user
 from sqlalchemy import String, cast, or_
 
@@ -22,6 +22,7 @@ from app.models.user import User
 from app.services.auth_service import authenticate_user
 from app.services.report_service import change_report
 from app.utils.decorators import admin_required
+from app.security import rate_limiter
 
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
@@ -230,10 +231,14 @@ def login():  # type: ignore[no-untyped-def]
 
     form = LoginForm()
     if form.validate_on_submit():
+        if not rate_limiter.allow("admin-login", current_app.config["RATE_LIMIT_LOGIN"]):
+            abort(429)
         user = authenticate_user(email=form.email.data, password=form.password.data, required_role="admin")
         if user is None:
             flash("Invalid credentials or account access.", "error")
         else:
+            session.clear()
+            session.permanent = True
             login_user(user, remember=form.remember.data)
             flash("Admin sign-in successful.", "success")
             return redirect(url_for("admin.dashboard"))

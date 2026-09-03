@@ -8,6 +8,7 @@ from flask_wtf import FlaskForm
 from flask_wtf.file import FileField
 from wtforms import BooleanField, SelectField, StringField, SubmitField, TextAreaField
 from wtforms.validators import DataRequired, Length, Optional, ValidationError
+from app.services.media_service import validate_report_media
 
 
 CRIME_TYPES = ("theft", "robbery", "kidnapping", "assault", "other")  # fallback for an unseeded database
@@ -57,16 +58,7 @@ class CrimeReportForm(FlaskForm):
         if not upload or not upload.filename:
             return
 
-        extension = upload.filename.rsplit(".", 1)[-1].lower() if "." in upload.filename else ""
-        if extension in EXECUTABLE_EXTENSIONS or extension not in MEDIA_EXTENSIONS:
-            raise ValidationError("Upload a JPG, PNG, WebP, MP4, WebM, or MOV file only.")
-        mimetype = (upload.mimetype or "").lower()
-        allowed_mimetypes = current_app.config["REPORT_ALLOWED_IMAGE_MIME_TYPES"] | current_app.config["REPORT_ALLOWED_VIDEO_MIME_TYPES"]
-        if mimetype not in allowed_mimetypes:
-            raise ValidationError("This media type is not allowed.")
-
-        upload.stream.seek(0, 2)
-        size = upload.stream.tell()
-        upload.stream.seek(0)
-        if size > current_app.config["REPORT_MAX_MEDIA_FILE_SIZE"]:
-            raise ValidationError("The media file exceeds the allowed size.")
+        try:
+            validate_report_media(upload)
+        except ValueError as error:
+            raise ValidationError(str(error)) from error
