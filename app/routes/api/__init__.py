@@ -76,7 +76,7 @@ def _filters(statement):
     return statement
 
 def serialize(report, public=False, detail=False):
-    if public: return {"crime_type": report.crime_type, "incident_datetime": report.incident_datetime.isoformat(), "latitude": round(float(report.latitude), 2), "longitude": round(float(report.longitude), 2), "risk_level": report.risk_level}
+    if public: return {"title": report.title, "crime_type": report.crime_type, "incident_datetime": report.incident_datetime.isoformat(), "latitude": round(float(report.latitude), 2), "longitude": round(float(report.longitude), 2), "risk_level": report.risk_level}
     data = {"id": str(report.id), "reference_code": report.reference_code, "crime_type": report.crime_type, "title": report.title, "incident_datetime": report.incident_datetime.isoformat(), "risk_level": report.risk_level, "status": report.status, "created_at": report.created_at.isoformat(), "latitude": float(report.latitude), "longitude": float(report.longitude), "is_anonymous": bool(report.is_anonymous)}
     if detail:
         data["description"] = report.description

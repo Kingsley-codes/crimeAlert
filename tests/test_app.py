@@ -61,6 +61,7 @@ def test_public_map_api_returns_only_approved_privacy_minimised_reports():
         assert response.status_code == 200
         assert len(response.json["reports"]) == 1
         assert response.json["reports"][0] == {
+                "title": "Untitled report",
             "crime_type": "theft",
             "incident_datetime": "2026-08-20T10:00:00",
             "latitude": 6.52,
